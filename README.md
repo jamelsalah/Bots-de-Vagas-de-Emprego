@@ -30,8 +30,8 @@ botVagas/
 ├── src/
 │   ├── models/gupyModel.js     # ponte que executa o Python
 │   ├── controllers/
-│   │   └── vagasController.js  # recebe o pedido e responde
-│   └── rotas.js                # define a rota /buscar
+│   │   └── jobsController.js   # recebe o pedido e responde
+│   └── routes.js               # define a rota /buscar
 ├── public/
 │   └── index.html              # página com os cards e a busca
 ├── dados/                      # cache e configurações (uso futuro)
@@ -58,7 +58,7 @@ pip install -r requirements.txt
 node server.js
 ```
 
-Depois, abra **http://localhost:3333** no navegador.
+Depois, abra **http://localhost:2424** no navegador.
 
 ## Roadmap
 
@@ -66,4 +66,3 @@ Depois, abra **http://localhost:3333** no navegador.
 - [ ] Cálculo de compatibilidade das vagas
 - [ ] Cache de resultados na pasta `dados/`
 - [ ] Novas fontes de vagas (ex: Coodesh, Remotar)
-- [ ] Armazenamento persistente (Supabase)

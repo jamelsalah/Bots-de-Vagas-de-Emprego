@@ -1,0 +1,121 @@
+/* Cores reaproveitáveis: defino uma vez aqui e uso no resto */
+    :root {
+      --cor-fundo:        #f3f4f6;
+      --cor-cartao:       #ffffff;
+      --cor-texto:        #1f2937;
+      --cor-texto-suave:  #6b7280;
+      --cor-remoto:       #16a34a;  /* verde  */
+      --cor-hibrido:      #7c3aed;  /* roxo   */
+      --cor-presencial:   #ea580c;  /* laranja*/
+      --cor-outro:        #6b7280;  /* cinza  */
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--cor-fundo);
+      color: var(--cor-texto);
+      margin: 0;
+      padding: 30px;
+    }
+
+    #titulo-pagina { text-align: center; margin-bottom: 6px; }
+    #contador-vagas { text-align: center; color: var(--cor-texto-suave); margin-bottom: 24px; }
+
+    /* A barra de busca (caixa de texto + botão) */
+    #barra-busca {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    #campo-busca {
+      padding: 10px 14px;
+      font-size: 15px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      width: 280px;
+    }
+    #botao-buscar {
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: bold;
+      color: #ffffff;
+      background: var(--cor-remoto);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #botao-buscar:disabled { background: var(--cor-outro); cursor: default; }
+
+    /* A legenda de cores no topo */
+    #legenda {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .item-legenda { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--cor-texto-suave); }
+    .bolinha { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+    /* A grade que organiza os cards em 2 colunas */
+    #lista-de-vagas {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* Cada card de vaga */
+    .cartao-vaga {
+      background: var(--cor-cartao);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      border-left: 6px solid var(--cor-outro); /* a barra colorida da esquerda */
+    }
+
+    /* A barra da esquerda e o selo mudam de cor conforme o modelo de trabalho */
+    .modelo-remoto     { border-left-color: var(--cor-remoto); }
+    .modelo-hibrido    { border-left-color: var(--cor-hibrido); }
+    .modelo-presencial { border-left-color: var(--cor-presencial); }
+
+    .cabecalho-cartao {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .titulo-vaga { font-size: 17px; margin: 0; }
+
+    /* O selo (pílula) no canto superior direito */
+    .selo-modelo {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ffffff;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--cor-outro);
+    }
+    .modelo-remoto     .selo-modelo { background: var(--cor-remoto); }
+    .modelo-hibrido    .selo-modelo { background: var(--cor-hibrido); }
+    .modelo-presencial .selo-modelo { background: var(--cor-presencial); }
+
+    .empresa { color: var(--cor-texto-suave); font-size: 14px; margin: 4px 0 10px 0; }
+    .descricao-vaga { color: var(--cor-texto-suave); font-size: 14px; line-height: 1.5; }
+
+    .rodape-cartao {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .data { font-size: 12px; color: var(--cor-texto-suave); }
+    .link-vaga {
+      font-size: 14px;
+      font-weight: bold;
+      text-decoration: none;
+      color: var(--cor-remoto);
+    }

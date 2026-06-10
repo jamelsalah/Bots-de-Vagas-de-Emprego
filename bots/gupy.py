@@ -3,7 +3,7 @@ import sys
 
 import requests
 
-URL = "https://employability-portal.gupy.io/api/v1/jobs"
+API_URL = "https://employability-portal.gupy.io/api/v1/jobs"
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Origin": "https://portal.gupy.io",
@@ -34,42 +34,39 @@ HEADERS = {
 # workplaceType        | str   | modelo de trabalho: "remote" | "hybrid" | "on-site"
 # disabilities         | bool  | True se a vaga é também para pessoas com deficiência (PcD)
 # skills               | list  | lista de competências/habilidades (pode vir vazia [])
-
-
-
-def buscar_vagas(termo):
-    vagas = []
+def fetch_jobs(term):
+    jobs = []
     offset = 0
-    limite = 100
+    limit = 100
 
     while True:
-        parametros = {"jobName": termo, "limit": limite, "offset": offset}
+        params = {"jobName": term, "limit": limit, "offset": offset}
 
-        resposta = requests.get(URL, params=parametros, headers=HEADERS, timeout=10)
-        resposta.raise_for_status()
-        dados = resposta.json()
+        response = requests.get(API_URL, params=params, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        data = response.json()
 
-        vagas.extend(dados["data"])
+        jobs.extend(data["data"])
 
-        total = dados["pagination"]["total"]
-        offset += limite
+        total = data["pagination"]["total"]
+        offset += limit
         if offset >= total:
             break
 
-    return vagas
+    return jobs
 
 
 def main():
     # O termo de busca vem como argumento da linha de comando.
-    # Ex: python coletor/gupy.py "java"   (sem argumento, usa "python")
-    termo = sys.argv[1] if len(sys.argv) > 1 else "python"
+    # Ex: python bots/gupy.py "java"   (sem argumento, usa "python")
+    term = sys.argv[1] if len(sys.argv) > 1 else "python"
 
-    vagas = buscar_vagas(termo)
+    jobs = fetch_jobs(term)
 
     # Imprime as vagas como JSON no stdout, para o Node capturar.
     # ensure_ascii=True (padrão) escapa acentos (ex: é), evitando erros
     # de codificação no terminal do Windows. O Node decodifica de volta.
-    print(json.dumps(vagas))
+    print(json.dumps(jobs))
 
 
 if __name__ == "__main__":
