@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vagas encontradas</title>
+
+  <!-- ============================================================= -->
+  <!-- BLOCO 1: ESTILO (CSS) — a aparência da página                 -->
+  <!-- ============================================================= -->
+  <style>
+    /* Cores reaproveitáveis: defino uma vez aqui e uso no resto */
+    :root {
+      --cor-fundo:        #f3f4f6;
+      --cor-cartao:       #ffffff;
+      --cor-texto:        #1f2937;
+      --cor-texto-suave:  #6b7280;
+      --cor-remoto:       #16a34a;  /* verde  */
+      --cor-hibrido:      #7c3aed;  /* roxo   */
+      --cor-presencial:   #ea580c;  /* laranja*/
+      --cor-outro:        #6b7280;  /* cinza  */
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--cor-fundo);
+      color: var(--cor-texto);
+      margin: 0;
+      padding: 30px;
+    }
+
+    #titulo-pagina { text-align: center; margin-bottom: 6px; }
+    #contador-vagas { text-align: center; color: var(--cor-texto-suave); margin-bottom: 24px; }
+
+    /* A barra de busca (caixa de texto + botão) */
+    #barra-busca {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    #campo-busca {
+      padding: 10px 14px;
+      font-size: 15px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      width: 280px;
+    }
+    #botao-buscar {
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: bold;
+      color: #ffffff;
+      background: var(--cor-remoto);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #botao-buscar:disabled { background: var(--cor-outro); cursor: default; }
+
+    /* A legenda de cores no topo */
+    #legenda {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .item-legenda { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--cor-texto-suave); }
+    .bolinha { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+    /* A grade que organiza os cards em 2 colunas */
+    #lista-de-vagas {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* Cada card de vaga */
+    .cartao-vaga {
+      background: var(--cor-cartao);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      border-left: 6px solid var(--cor-outro); /* a barra colorida da esquerda */
+    }
+
+    /* A barra da esquerda e o selo mudam de cor conforme o modelo de trabalho */
+    .modelo-remoto     { border-left-color: var(--cor-remoto); }
+    .modelo-hibrido    { border-left-color: var(--cor-hibrido); }
+    .modelo-presencial { border-left-color: var(--cor-presencial); }
+
+    .cabecalho-cartao {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .titulo-vaga { font-size: 17px; margin: 0; }
+
+    /* O selo (pílula) no canto superior direito */
+    .selo-modelo {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ffffff;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--cor-outro);
+    }
+    .modelo-remoto     .selo-modelo { background: var(--cor-remoto); }
+    .modelo-hibrido    .selo-modelo { background: var(--cor-hibrido); }
+    .modelo-presencial .selo-modelo { background: var(--cor-presencial); }
+
+    .empresa { color: var(--cor-texto-suave); font-size: 14px; margin: 4px 0 10px 0; }
+    .descricao-vaga { color: var(--cor-texto-suave); font-size: 14px; line-height: 1.5; }
+
+    .rodape-cartao {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .data { font-size: 12px; color: var(--cor-texto-suave); }
+    .link-vaga {
+      font-size: 14px;
+      font-weight: bold;
+      text-decoration: none;
+      color: var(--cor-remoto);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ============================================================= -->
+  <!-- BLOCO 2: ESTRUTURA (HTML) — os "esqueletos" da página         -->
+  <!-- ============================================================= -->
+  <h1 id="titulo-pagina">Vagas encontradas</h1>
+  <p id="contador-vagas">carregando...</p>
+
+  <!-- Caixa de busca: o botão chama a função buscarVagas() -->
+  <div id="barra-busca">
+    <input id="campo-busca" type="text" value="python" placeholder="Ex: python, java, dados...">
+    <button id="botao-buscar" onclick="buscarVagas()">Buscar vagas</button>
+  </div>
+
+  <div id="legenda">
+    <span class="item-legenda"><span class="bolinha" style="background: var(--cor-remoto)"></span> Remoto</span>
+    <span class="item-legenda"><span class="bolinha" style="background: var(--cor-hibrido)"></span> Híbrido</span>
+    <span class="item-legenda"><span class="bolinha" style="background: var(--cor-presencial)"></span> Presencial</span>
+  </div>
+
+  <div id="lista-de-vagas"></div>
+
+  <!-- ============================================================= -->
+  <!-- BLOCO 3: COMPORTAMENTO (JavaScript) — fala com o servidor      -->
+  <!-- ============================================================= -->
+  <script>
+    // Traduz o código do modelo de trabalho para texto e classe de cor
+    function traduzirModelo(tipo) {
+      if (tipo === "remote")  return { texto: "Remoto",     classe: "modelo-remoto" };
+      if (tipo === "hybrid")  return { texto: "Híbrido",    classe: "modelo-hibrido" };
+      if (tipo === "on-site") return { texto: "Presencial", classe: "modelo-presencial" };
+      return { texto: "Outro", classe: "modelo-outro" };
+    }
+
+    // Transforma a data "2026-06-09T13:48:11Z" em "09/06/2026"
+    function formatarData(textoData) {
+      return new Date(textoData).toLocaleDateString("pt-BR");
+    }
+
+    // Monta o HTML de UM card a partir de UMA vaga
+    function criarCartao(vaga) {
+      const modelo = traduzirModelo(vaga.workplaceType);
+
+      const cartao = document.createElement("div");
+      cartao.className = "cartao-vaga " + modelo.classe;
+      cartao.innerHTML = `
+        <div class="cabecalho-cartao">
+          <h2 class="titulo-vaga">${vaga.name}</h2>
+          <span class="selo-modelo">${modelo.texto}</span>
+        </div>
+        <p class="empresa">${vaga.careerPageName}</p>
+        <p class="descricao-vaga">${vaga.description.slice(0, 180)}...</p>
+        <div class="rodape-cartao">
+          <span class="data">Publicada em ${formatarData(vaga.publishedDate)}</span>
+          <a class="link-vaga" href="${vaga.jobUrl}" target="_blank">Ver vaga →</a>
+        </div>
+      `;
+      return cartao;
+    }
+
+    // Desenha na tela a lista de vagas recebida (limpando o que havia antes).
+    function desenharVagas(listaDeVagas) {
+      const lista = document.getElementById("lista-de-vagas");
+      lista.innerHTML = ""; // limpa os cards antigos
+      document.getElementById("contador-vagas").textContent = listaDeVagas.length + " vagas";
+
+      listaDeVagas.forEach(function (vaga) {
+        lista.appendChild(criarCartao(vaga));
+      });
+    }
+
+    // Chamada pelo botão: pede ao servidor para buscar vagas e redesenha a tela.
+    async function buscarVagas() {
+      const termo = document.getElementById("campo-busca").value || "python";
+      const botao = document.getElementById("botao-buscar");
+
+      botao.disabled = true;
+      botao.textContent = "Buscando...";
+      document.getElementById("contador-vagas").textContent = "buscando...";
+
+      try {
+        const resposta = await fetch("/buscar?termo=" + encodeURIComponent(termo));
+        const vagas = await resposta.json();
+        desenharVagas(vagas);
+      } catch (erro) {
+        document.getElementById("contador-vagas").textContent = "Erro ao buscar. O servidor está rodando?";
+      }
+
+      botao.disabled = false;
+      botao.textContent = "Buscar vagas";
+    }
+
+    // Ao abrir a página, já faz uma busca inicial automaticamente.
+    buscarVagas();
+  </script>
+</body>
+</html>

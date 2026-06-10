@@ -1,0 +1,16 @@
+# Dependências
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Variáveis de ambiente / segredos
+.env
+
+# Logs
+npm-debug.log*
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db

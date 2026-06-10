@@ -1,0 +1,17 @@
+{
+  "name": "botvagas",
+  "version": "1.0.0",
+  "description": "Bot que busca vagas de emprego e as exibe numa página web (Node/Express + scraper Python).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "jamelsalah",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
