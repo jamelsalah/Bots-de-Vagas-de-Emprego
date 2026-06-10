@@ -8,98 +8,92 @@
 </head>
 
 <body>
-  <!-- ============================================================= -->
-  <!-- BLOCO 2: ESTRUTURA (HTML) — os "esqueletos" da página         -->
-  <!-- ============================================================= -->
-  <h1 id="titulo-pagina">Vagas encontradas</h1>
-  <p id="contador-vagas">carregando...</p>
+  <h1 id="page-title">Vagas encontradas</h1>
+  <p id="jobs-count">carregando...</p>
 
-  <!-- Caixa de busca: o botão chama a função buscarVagas() -->
-  <div id="barra-busca">
-    <input id="campo-busca" type="text" value="python" placeholder="Ex: python, java, dados...">
-    <button id="botao-buscar" onclick="buscarVagas()">Buscar vagas</button>
+  <!-- Caixa de busca: o botão chama a função searchJobs() -->
+  <div id="search-bar">
+    <input id="search-input" type="text" value="python" placeholder="Ex: python, java, dados...">
+    <button id="search-button" onclick="searchJobs()">Buscar vagas</button>
   </div>
 
-  <div id="legenda">
-    <span class="item-legenda"><span class="bolinha" style="background: var(--cor-remoto)"></span> Remoto</span>
-    <span class="item-legenda"><span class="bolinha" style="background: var(--cor-hibrido)"></span> Híbrido</span>
-    <span class="item-legenda"><span class="bolinha" style="background: var(--cor-presencial)"></span> Presencial</span>
+  <div id="legend">
+    <span class="legend-item"><span class="dot" style="background: var(--color-remote)"></span> Remoto</span>
+    <span class="legend-item"><span class="dot" style="background: var(--color-hybrid)"></span> Híbrido</span>
+    <span class="legend-item"><span class="dot" style="background: var(--color-onsite)"></span> Presencial</span>
   </div>
 
-  <div id="lista-de-vagas"></div>
+  <div id="jobs-list"></div>
 
-  <!-- ============================================================= -->
-  <!-- BLOCO 3: COMPORTAMENTO (JavaScript) — fala com o servidor      -->
-  <!-- ============================================================= -->
   <script>
     // Traduz o código do modelo de trabalho para texto e classe de cor
-    function traduzirModelo(tipo) {
-      if (tipo === "remote")  return { texto: "Remoto",     classe: "modelo-remoto" };
-      if (tipo === "hybrid")  return { texto: "Híbrido",    classe: "modelo-hibrido" };
-      if (tipo === "on-site") return { texto: "Presencial", classe: "modelo-presencial" };
-      return { texto: "Outro", classe: "modelo-outro" };
+    function translateMode(type) {
+      if (type === "remote")  return { text: "Remoto",     cssClass: "mode-remote" };
+      if (type === "hybrid")  return { text: "Híbrido",    cssClass: "mode-hybrid" };
+      if (type === "on-site") return { text: "Presencial", cssClass: "mode-onsite" };
+      return { text: "Outro", cssClass: "mode-other" };
     }
 
     // Transforma a data "2026-06-09T13:48:11Z" em "09/06/2026"
-    function formatarData(textoData) {
-      return new Date(textoData).toLocaleDateString("pt-BR");
+    function formatDate(isoDate) {
+      return new Date(isoDate).toLocaleDateString("pt-BR");
     }
 
     // Monta o HTML de UM card a partir de UMA vaga
-    function criarCartao(vaga) {
-      const modelo = traduzirModelo(vaga.workplaceType);
+    function createCard(job) {
+      const mode = translateMode(job.workplaceType);
 
-      const cartao = document.createElement("div");
-      cartao.className = "cartao-vaga " + modelo.classe;
-      cartao.innerHTML = `
-        <div class="cabecalho-cartao">
-          <h2 class="titulo-vaga">${vaga.name}</h2>
-          <span class="selo-modelo">${modelo.texto}</span>
+      const card = document.createElement("div");
+      card.className = "job-card " + mode.cssClass;
+      card.innerHTML = `
+        <div class="card-header">
+          <h2 class="job-title">${job.name}</h2>
+          <span class="mode-badge">${mode.text}</span>
         </div>
-        <p class="empresa">${vaga.careerPageName}</p>
-        <p class="descricao-vaga">${vaga.description.slice(0, 180)}...</p>
-        <div class="rodape-cartao">
-          <span class="data">Publicada em ${formatarData(vaga.publishedDate)}</span>
-          <a class="link-vaga" href="${vaga.jobUrl}" target="_blank">Ver vaga →</a>
+        <p class="company">${job.careerPageName}</p>
+        <p class="job-description">${job.description.slice(0, 180)}...</p>
+        <div class="card-footer">
+          <span class="date">Publicada em ${formatDate(job.publishedDate)}</span>
+          <a class="job-link" href="${job.jobUrl}" target="_blank">Ver vaga →</a>
         </div>
       `;
-      return cartao;
+      return card;
     }
 
     // Desenha na tela a lista de vagas recebida (limpando o que havia antes).
-    function desenharVagas(listaDeVagas) {
-      const lista = document.getElementById("lista-de-vagas");
-      lista.innerHTML = ""; // limpa os cards antigos
-      document.getElementById("contador-vagas").textContent = listaDeVagas.length + " vagas";
+    function renderJobs(jobsList) {
+      const container = document.getElementById("jobs-list");
+      container.innerHTML = ""; // limpa os cards antigos
+      document.getElementById("jobs-count").textContent = jobsList.length + " vagas";
 
-      listaDeVagas.forEach(function (vaga) {
-        lista.appendChild(criarCartao(vaga));
+      jobsList.forEach(function (job) {
+        container.appendChild(createCard(job));
       });
     }
 
     // Chamada pelo botão: pede ao servidor para buscar vagas e redesenha a tela.
-    async function buscarVagas() {
-      const termo = document.getElementById("campo-busca").value || "python";
-      const botao = document.getElementById("botao-buscar");
+    async function searchJobs() {
+      const term = document.getElementById("search-input").value || "python";
+      const button = document.getElementById("search-button");
 
-      botao.disabled = true;
-      botao.textContent = "Buscando...";
-      document.getElementById("contador-vagas").textContent = "buscando...";
+      button.disabled = true;
+      button.textContent = "Buscando...";
+      document.getElementById("jobs-count").textContent = "buscando...";
 
       try {
-        const resposta = await fetch("/buscar?termo=" + encodeURIComponent(termo));
-        const vagas = await resposta.json();
-        desenharVagas(vagas);
-      } catch (erro) {
-        document.getElementById("contador-vagas").textContent = "Erro ao buscar. O servidor está rodando?";
+        const response = await fetch("/search?term=" + encodeURIComponent(term));
+        const jobs = await response.json();
+        renderJobs(jobs);
+      } catch (error) {
+        document.getElementById("jobs-count").textContent = "Erro ao buscar. O servidor está rodando?";
       }
 
-      botao.disabled = false;
-      botao.textContent = "Buscar vagas";
+      button.disabled = false;
+      button.textContent = "Buscar vagas";
     }
 
     // Ao abrir a página, já faz uma busca inicial automaticamente.
-    buscarVagas();
+    searchJobs();
   </script>
 </body>
 </html>

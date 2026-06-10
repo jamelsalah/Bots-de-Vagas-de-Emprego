@@ -34,6 +34,8 @@ HEADERS = {
 # workplaceType        | str   | modelo de trabalho: "remote" | "hybrid" | "on-site"
 # disabilities         | bool  | True se a vaga é também para pessoas com deficiência (PcD)
 # skills               | list  | lista de competências/habilidades (pode vir vazia [])
+
+
 def fetch_jobs(term):
     jobs = []
     offset = 0

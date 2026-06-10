@@ -18,7 +18,7 @@ coleta as vagas e devolve em JSON, que o Node entrega de volta para a página mo
 os cards.
 
 ```
-[Página] --/buscar?termo=--> [Express] --executa--> [Python] --JSON--> [Página]
+[Página] --/search?term=--> [Express] --executa--> [Python] --JSON--> [Página]
 ```
 
 ## Estrutura
@@ -31,7 +31,7 @@ botVagas/
 │   ├── models/gupyModel.js     # ponte que executa o Python
 │   ├── controllers/
 │   │   └── jobsController.js   # recebe o pedido e responde
-│   └── routes.js               # define a rota /buscar
+│   └── routes.js               # define a rota /search
 ├── public/
 │   └── index.html              # página com os cards e a busca
 ├── dados/                      # cache e configurações (uso futuro)

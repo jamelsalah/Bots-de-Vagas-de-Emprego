@@ -4,7 +4,7 @@ const { searchJobs } = require("./controllers/jobsController");
 
 const routes = express.Router();
 
-// GET /buscar?termo=python  ->  função searchJobs
-routes.get("/buscar", searchJobs);
+// GET /search?term=python  ->  função searchJobs
+routes.get("/search", searchJobs);
 
 module.exports = routes;

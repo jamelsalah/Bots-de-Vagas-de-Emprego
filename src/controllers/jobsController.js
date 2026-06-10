@@ -3,8 +3,8 @@
 const { collectJobs } = require("../models/gupyModel");
 
 async function searchJobs(req, res) {
-  // Pega o termo da URL (?termo=...). Sem termo, usa "python".
-  const term = req.query.termo || "python";
+  // Pega o termo da URL (?term=...). Sem termo, usa "python".
+  const term = req.query.term || "python";
 
   try {
     const jobs = await collectJobs(term);
