@@ -1,16 +1,16 @@
 // CONTROLLER: o "meio de campo".
 // Recebe o pedido do navegador, chama os models e devolve a resposta.
 const { collectJobs } = require("../models/gupyModel");
-const { readCache, saveCache } = require("../models/jobsCache");
+const { readData, saveData } = require("../models/jobsData");
 
-// GET /jobs -> lê as vagas já salvas no cache (NÃO roda o scraper).
-function getCachedJobs(req, res) {
-  const cache = readCache();
-  // Sem cache ainda: devolve um payload vazio para a página mostrar o estado vazio.
-  res.json(cache || { term: null, fetchedAt: null, jobs: [] });
+// GET /jobs -> lê as vagas já salvas na base de dados (NÃO roda o scraper).
+function getJobsData(req, res) {
+  const data = readData();
+  // Sem dados ainda: devolve um payload vazio para a página mostrar o estado vazio.
+  res.json(data || { term: null, fetchedAt: null, jobs: [] });
 }
 
-// GET /search?term= -> rebusca na fonte, salva no cache e devolve.
+// GET /search?term= -> rebusca na fonte, salva na base de dados e devolve.
 async function searchJobs(req, res) {
   // Pega o termo da URL (?term=...). Sem termo, usa "python".
   const term = req.query.term || "python";
@@ -18,7 +18,7 @@ async function searchJobs(req, res) {
   try {
     const jobs = await collectJobs(term);
     const payload = { term, fetchedAt: new Date().toISOString(), jobs };
-    saveCache(payload); // atualiza o cache em dados/gupy.json
+    saveData(payload); // atualiza a base de dados em dados/gupy.json
     res.json(payload);
   } catch (error) {
     console.error("Erro ao buscar vagas:", error);
@@ -26,4 +26,4 @@ async function searchJobs(req, res) {
   }
 }
 
-module.exports = { getCachedJobs, searchJobs };
+module.exports = { getJobsData, searchJobs };

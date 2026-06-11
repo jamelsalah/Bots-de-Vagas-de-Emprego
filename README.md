@@ -13,13 +13,13 @@ caixa de busca por termo. A primeira fonte implementada é a **Gupy**.
 
 ## Como funciona
 
-Ao abrir, a página lê as vagas já salvas no **cache** (`dados/gupy.json`), **sem** rodar o
+Ao abrir, a página lê as vagas já salvas na **base de dados** (`dados/gupy.json`), **sem** rodar o
 scraper. Só quando você clica em "Buscar vagas" o servidor executa o scraper Python,
-**atualiza o cache** e devolve os resultados.
+**atualiza a base de dados** e devolve os resultados.
 
 ```
-abrir página   ->  GET /jobs          ->  lê o cache (dados/gupy.json)
-clicar buscar  ->  GET /search?term=  ->  [Python] coleta -> salva no cache -> mostra
+abrir página   ->  GET /jobs          ->  lê a base de dados (dados/gupy.json)
+clicar buscar  ->  GET /search?term=  ->  [Python] coleta -> salva na base de dados -> mostra
 ```
 
 ## Estrutura
@@ -31,14 +31,14 @@ botVagas/
 ├── src/
 │   ├── models/
 │   │   ├── gupyModel.js        # ponte que executa o Python
-│   │   └── jobsCache.js        # lê/grava o cache de vagas (dados/gupy.json)
+│   │   └── jobsData.js         # lê/grava a base de dados de vagas (dados/gupy.json)
 │   ├── controllers/
 │   │   └── jobsController.js   # recebe o pedido e responde
 │   └── routes.js               # define as rotas /jobs e /search
 ├── public/
 │   └── index.html              # página com os cards e a busca
 ├── dados/
-│   └── gupy.json               # cache da última busca
+│   └── gupy.json               # base de dados da última busca
 ├── server.js                   # sobe o servidor (porta 2424)
 ├── package.json
 └── requirements.txt
@@ -68,5 +68,5 @@ Depois, abra **http://localhost:2424** no navegador.
 
 - [ ] Filtros na página (por modelo de trabalho, por palavra)
 - [ ] Cálculo de compatibilidade das vagas
-- [x] Cache de resultados em `dados/gupy.json`
+- [x] Base de dados de resultados em `dados/gupy.json`
 - [ ] Novas fontes de vagas (ex: Coodesh, Remotar)

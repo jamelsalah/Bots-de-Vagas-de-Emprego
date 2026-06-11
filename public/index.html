@@ -75,7 +75,7 @@
       const jobs = data.jobs || [];
       const counter = document.getElementById("jobs-count");
 
-      // Se o cache guardou o termo, repõe na caixa de busca.
+      // Se a base de dados guardou o termo, repõe na caixa de busca.
       if (data.term) {
         document.getElementById("search-input").value = data.term;
       }
@@ -95,14 +95,14 @@
       renderJobs(jobs);
     }
 
-    // Ao abrir a página: lê as vagas já salvas no cache (NÃO rebusca).
-    async function loadCache() {
+    // Ao abrir a página: lê as vagas já salvas na base de dados (NÃO rebusca).
+    async function loadData() {
       const response = await fetch("/jobs");
       const data = await response.json();
       showJobs(data);
     }
 
-    // Botão: rebusca na fonte com o termo digitado, salva no cache e mostra.
+    // Botão: rebusca na fonte com o termo digitado, salva na base de dados e mostra.
     async function searchJobs() {
       const term = document.getElementById("search-input").value || "python";
       const button = document.getElementById("search-button");
@@ -123,8 +123,8 @@
       button.textContent = "Buscar vagas";
     }
 
-    // Ao abrir a página, carrega o cache (sem rebuscar).
-    loadCache();
+    // Ao abrir a página, carrega a base de dados (sem rebuscar).
+    loadData();
   </script>
 </body>
 </html>
