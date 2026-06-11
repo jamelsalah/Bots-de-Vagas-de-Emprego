@@ -5,30 +5,19 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
-# Página de busca do Indeed Brasil. O termo vai em ?q= e a paginação em &start=.
 SEARCH_URL = "https://br.indeed.com/jobs?q={term}&start={start}"
 
-# Reaproveitamos o SEU Edge já logado no Indeed. O login do Indeed exige reCAPTCHA,
-# que NÃO funciona em navegador automatizado — então o login é feito por você no Edge
-# normal, e aqui o bot abre o MESMO perfil (com os cookies de login já gravados),
-# pulando o login inteiro. Assim o reCAPTCHA nunca é acionado.
-#
-#   >>> IMPORTANTE: feche TODAS as janelas do Edge antes de rodar o bot. <<<
-#   (o perfil fica "travado" enquanto o Edge estiver aberto; se o Edge continua
-#    rodando em segundo plano, desligue em: Configurações > Sistema e desempenho >
-#    "Continuar executando apps em segundo plano quando o Microsoft Edge é fechado".)
-#
+# O login do Indeed usa reCAPTCHA (que não funciona em navegador automatizado), então em
+# vez de logar, o bot reaproveita o SEU Edge já logado: abre o mesmo perfil, com os cookies.
+# >>> Feche TODAS as janelas do Edge antes de rodar (o perfil trava se estiver aberto). <<<
 # Se você logou em outro perfil do Edge, troque "Default" por "Profile 1", etc.
 EDGE_USER_DATA = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Edge" / "User Data"
 EDGE_PROFILE = "Default"
 
-# Quantas páginas percorrer (cada página traz ~15 vagas). 5 páginas ≈ 75 vagas.
-# A 1ª página é pública; da 2ª em diante o Indeed exige estar logado (vem do perfil).
+# A 1ª página é pública; da 2ª em diante o Indeed exige login. ~15 vagas por página.
 MAX_PAGES = 5
 
-# O Indeed bloqueia requests "secos" (Cloudflare/CAPTCHA), então usamos um
-# navegador Chromium de verdade via Playwright. As vagas ficam embutidas numa
-# variável JavaScript da própria página: window.mosaic.providerData.
+# As vagas ficam embutidas na página nesta variável JavaScript; pegamos a lista "results".
 JOBCARDS_JS = """
 () => {
   const provider = window.mosaic
@@ -40,8 +29,7 @@ JOBCARDS_JS = """
 }
 """
 
-# Estrutura de cada vaga retornada pelo Indeed (dicionário Python).
-# A vaga vem com ~110 campos; abaixo só os úteis para o nosso projeto.
+# Campos úteis de cada vaga do Indeed (a vaga vem com ~110 campos no total):
 # Campo                | Tipo  | Significado
 # ---------------------|-------|---------------------------------------------------
 # jobkey               | str   | identificador único da vaga (usado no link e no dedup)
@@ -71,7 +59,6 @@ JOBCARDS_JS = """
 
 
 def coletar_pagina(page, term, start):
-    # Abre uma página de resultados e devolve a lista de vagas (ou None se não vier).
     page.goto(SEARCH_URL.format(term=term, start=start), timeout=60000)
     try:
         page.wait_for_function(JOBCARDS_JS, timeout=30000)
@@ -82,15 +69,10 @@ def coletar_pagina(page, term, start):
 
 def fetch_jobs(term, max_pages=MAX_PAGES):
     todas = []
-    vistos = set()  # jobkeys já coletados, para não repetir vagas entre páginas
+    vistos = set()
 
-    # Mantemos os mascaramentos: Stealth() disfarça as "pegadas" do Playwright
-    # (navigator.webdriver, plugins, WebGL...) em toda página criada, ajudando a
-    # não disparar o "Security Check" do Cloudflare durante a paginação.
+    # Stealth() disfarça as "pegadas" do Playwright; ajuda a não disparar o Cloudflare.
     with Stealth().use_sync(sync_playwright()) as p:
-        # Abre o Edge usando o SEU perfil (que já tem o login do Indeed).
-        # channel="msedge" usa o Edge instalado; --disable-blink-features=AutomationControlled
-        # remove o sinal mais óbvio de automação.
         try:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=str(EDGE_USER_DATA),
@@ -113,12 +95,8 @@ def fetch_jobs(term, max_pages=MAX_PAGES):
 
         page = context.new_page()
 
-        # Percorre as páginas: start = 0, 10, 20, ... (mesma aba).
         for i in range(max_pages):
-            start = i * 10
-            jobs = coletar_pagina(page, term, start)
-
-            # Página vazia: fim dos resultados, bloqueio, ou sessão não logada.
+            jobs = coletar_pagina(page, term, i * 10)
             if not jobs:
                 break
 
@@ -131,7 +109,6 @@ def fetch_jobs(term, max_pages=MAX_PAGES):
                     todas.append(job)
                     novos += 1
 
-            # Nenhuma vaga nova nesta página: chegamos ao fim dos resultados.
             if novos == 0:
                 break
 
@@ -141,27 +118,22 @@ def fetch_jobs(term, max_pages=MAX_PAGES):
 
 
 def main():
-    # O termo de busca vem como argumento. Ex: python bots/indeed.py "python"
     term = sys.argv[1] if len(sys.argv) > 1 else "python"
 
     jobs, titulo = fetch_jobs(term)
 
-    # Diagnóstico: se não achamos as vagas, provavelmente fomos bloqueados.
     if not jobs:
         print("[x] Nao consegui coletar as vagas.")
         print(f"    Titulo da pagina: {titulo!r}")
         sys.exit(1)
 
-    # Funcionou: imprime um resumo para validarmos a coleta (Fase 1).
     print(f"[ok] {len(jobs)} vagas encontradas para '{term}':\n")
-
     for job in jobs[:10]:
         title = job.get("title", "(sem título)")
         company = job.get("company", "(sem empresa)")
         location = job.get("formattedLocation", "")
         print(f" - {title} | {company} | {location}")
 
-    # Dica: se veio só ~15 (uma página), a sessão pode não estar logada.
     if len(jobs) <= 15:
         print("\n(dica: se esperava mais vagas, confirme que voce esta LOGADO no")
         print(" Indeed nesse perfil do Edge e que o Edge estava fechado ao rodar.)")
