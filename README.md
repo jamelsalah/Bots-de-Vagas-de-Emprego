@@ -13,12 +13,13 @@ caixa de busca por termo. A primeira fonte implementada é a **Gupy**.
 
 ## Como funciona
 
-A página chama o servidor Node, que executa o scraper Python sob demanda. O Python
-coleta as vagas e devolve em JSON, que o Node entrega de volta para a página montar
-os cards.
+Ao abrir, a página lê as vagas já salvas no **cache** (`dados/gupy.json`), **sem** rodar o
+scraper. Só quando você clica em "Buscar vagas" o servidor executa o scraper Python,
+**atualiza o cache** e devolve os resultados.
 
 ```
-[Página] --/search?term=--> [Express] --executa--> [Python] --JSON--> [Página]
+abrir página   ->  GET /jobs          ->  lê o cache (dados/gupy.json)
+clicar buscar  ->  GET /search?term=  ->  [Python] coleta -> salva no cache -> mostra
 ```
 
 ## Estrutura
@@ -28,14 +29,17 @@ botVagas/
 ├── bots/
 │   └── gupy.py                 # coletor (motor): busca na Gupy e imprime JSON
 ├── src/
-│   ├── models/gupyModel.js     # ponte que executa o Python
+│   ├── models/
+│   │   ├── gupyModel.js        # ponte que executa o Python
+│   │   └── jobsCache.js        # lê/grava o cache de vagas (dados/gupy.json)
 │   ├── controllers/
 │   │   └── jobsController.js   # recebe o pedido e responde
-│   └── routes.js               # define a rota /search
+│   └── routes.js               # define as rotas /jobs e /search
 ├── public/
 │   └── index.html              # página com os cards e a busca
-├── dados/                      # cache e configurações (uso futuro)
-├── server.js                   # sobe o servidor (porta 3333)
+├── dados/
+│   └── gupy.json               # cache da última busca
+├── server.js                   # sobe o servidor (porta 2424)
 ├── package.json
 └── requirements.txt
 ```
@@ -64,5 +68,5 @@ Depois, abra **http://localhost:2424** no navegador.
 
 - [ ] Filtros na página (por modelo de trabalho, por palavra)
 - [ ] Cálculo de compatibilidade das vagas
-- [ ] Cache de resultados na pasta `dados/`
+- [x] Cache de resultados em `dados/gupy.json`
 - [ ] Novas fontes de vagas (ex: Coodesh, Remotar)
