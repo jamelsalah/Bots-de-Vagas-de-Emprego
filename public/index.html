@@ -65,7 +65,7 @@
       const container = document.getElementById("jobs-list");
       container.innerHTML = ""; // limpa os cards antigos
 
-      jobsList.forEach(function (job) {
+      jobsList.map(job => {
         container.appendChild(createCard(job));
       });
     }
