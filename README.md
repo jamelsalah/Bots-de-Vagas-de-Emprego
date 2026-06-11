@@ -27,7 +27,8 @@ clicar buscar  ->  GET /search?term=  ->  [Python] coleta -> salva na base de da
 ```
 botVagas/
 ├── bots/
-│   └── gupy.py                 # coletor (motor): busca na Gupy e imprime JSON
+│   ├── gupy.py                 # coletor (motor): busca na Gupy e imprime JSON
+│   └── indeed.py               # coletor do Indeed (via Playwright + Edge logado)
 ├── src/
 │   ├── models/
 │   │   ├── gupyModel.js        # ponte que executa o Python
@@ -64,9 +65,37 @@ node server.js
 
 Depois, abra **http://localhost:2424** no navegador.
 
+## Bot do Indeed (instruções especiais)
+
+O Indeed bloqueia coletas simples (Cloudflare/CAPTCHA), então o `bots/indeed.py` usa o
+**Playwright** controlando o **Microsoft Edge** já instalado no Windows. Além disso, o Indeed só
+mostra a **1ª página** de resultados sem login; para ver as páginas seguintes é preciso estar
+**logado**. Como o login do Indeed usa reCAPTCHA (que não funciona em navegador automatizado), o
+bot **reaproveita o seu Edge já logado**, em vez de tentar logar sozinho.
+
+Por isso, antes de rodar o bot do Indeed:
+
+1. **Logue no Indeed pelo Edge normal.** Abra o Edge do dia a dia, acesse o
+   [Indeed](https://br.indeed.com/) e faça login (e-mail + código). Confirme que ficou logado.
+2. **Feche todas as janelas do Edge.** O perfil fica "travado" enquanto o Edge estiver aberto.
+3. **Desative o Edge em segundo plano.** O Edge costuma continuar rodando mesmo fechado. Vá em
+   `Configurações → Sistema e desempenho` e **desligue**
+   *"Continuar executando apps em segundo plano quando o Microsoft Edge é fechado"*.
+   (Alternativa: encerre os processos `msedge.exe` pelo Gerenciador de Tarefas.)
+
+Para rodar o coletor manualmente (usando o Python do ambiente virtual `.venv`):
+
+```powershell
+.\.venv\Scripts\python.exe bots\indeed.py "python"
+```
+
+> Se vier só ~15 vagas, provavelmente a sessão não estava logada ou o Edge ainda estava aberto.
+> Se logou em outro perfil do Edge, ajuste `EDGE_PROFILE` no `bots/indeed.py` (ex.: `"Profile 1"`).
+
 ## Roadmap
 
 - [ ] Filtros na página (por modelo de trabalho, por palavra)
 - [ ] Cálculo de compatibilidade das vagas
 - [x] Base de dados de resultados em `data/gupy.json`
+- [x] Bot do Indeed (Playwright + Edge logado)
 - [ ] Novas fontes de vagas (ex: Coodesh, Remotar)
