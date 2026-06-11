@@ -1,8 +1,8 @@
-// MODEL (base de dados): lê e grava as vagas em um arquivo JSON na pasta dados/.
+// MODEL (base de dados): lê as vagas que o bot salvou no arquivo JSON da pasta data/.
 const fs = require("fs");
 const path = require("path");
 
-const DATA_FILE = path.join(__dirname, "..", "..", "dados", "gupy.json");
+const DATA_FILE = path.join(__dirname, "..", "..", "data", "gupy.json");
 
 function readData() {
   try {
@@ -14,8 +14,4 @@ function readData() {
   }
 }
 
-function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-}
-
-module.exports = { readData, saveData };
+module.exports = { readData };

@@ -1,29 +1,21 @@
-// MODEL (ponte): executa o bot Python e devolve as vagas já em objeto JS.
+// MODEL (ponte): manda o bot Python rodar. O próprio bot grava as vagas em data/gupy.json.
 const { execFile } = require("child_process");
 const path = require("path");
 
 // Caminho até o script Python (sobe de src/models até a raiz e entra em bots/).
 const PYTHON_SCRIPT = path.join(__dirname, "..", "..", "bots", "gupy.py");
 
-function collectJobs(term) {
-  // Envolvemos em uma Promise para poder usar "await" no controller.
+function runBot(term) {
+  // Promise que resolve quando o bot termina de rodar (e de gravar o JSON).
   return new Promise((resolve, reject) => {
     // Executa: python bots/gupy.py "<termo>"
-    // maxBuffer aumentado porque a resposta (com descrições) é grande.
-    const options = { maxBuffer: 10 * 1024 * 1024 };
-
-    execFile("python", [PYTHON_SCRIPT, term], options, (error, stdout) => {
+    execFile("python", [PYTHON_SCRIPT, term], (error) => {
       if (error) {
         return reject(error);
       }
-      try {
-        // O Python imprimiu JSON; aqui transformamos em objeto JavaScript.
-        resolve(JSON.parse(stdout));
-      } catch (parseError) {
-        reject(parseError);
-      }
+      resolve();
     });
   });
 }
 
-module.exports = { collectJobs };
+module.exports = { runBot };

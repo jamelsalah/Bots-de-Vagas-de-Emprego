@@ -1,5 +1,7 @@
 import json
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 
 import requests
 
@@ -9,6 +11,9 @@ HEADERS = {
     "Origin": "https://portal.gupy.io",
     "Referer": "https://portal.gupy.io/",
 }
+
+# Caminho da base de dados (sobe de bots/ até a raiz e entra em data/).
+DATA_FILE = Path(__file__).parent.parent / "data" / "gupy.json"
 
 
 # Estrutura de cada vaga retornada pela API (dicionário Python).
@@ -34,8 +39,6 @@ HEADERS = {
 # workplaceType        | str   | modelo de trabalho: "remote" | "hybrid" | "on-site"
 # disabilities         | bool  | True se a vaga é também para pessoas com deficiência (PcD)
 # skills               | list  | lista de competências/habilidades (pode vir vazia [])
-
-
 def fetch_jobs(term):
     jobs = []
     offset = 0
@@ -58,17 +61,29 @@ def fetch_jobs(term):
     return jobs
 
 
+def save_data(term, jobs):
+    # Monta o registro e grava direto na base de dados (data/gupy.json).
+    # Quem lê esse arquivo é o servidor Node — nada de vagas vai para o terminal.
+    payload = {
+        "term": term,
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "jobs": jobs,
+    }
+    DATA_FILE.parent.mkdir(exist_ok=True)
+    with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
+        json.dump(payload, arquivo, ensure_ascii=False, indent=2)
+
+
 def main():
     # O termo de busca vem como argumento da linha de comando.
     # Ex: python bots/gupy.py "java"   (sem argumento, usa "python")
     term = sys.argv[1] if len(sys.argv) > 1 else "python"
 
     jobs = fetch_jobs(term)
+    save_data(term, jobs)
 
-    # Imprime as vagas como JSON no stdout, para o Node capturar.
-    # ensure_ascii=True (padrão) escapa acentos (ex: é), evitando erros
-    # de codificação no terminal do Windows. O Node decodifica de volta.
-    print(json.dumps(jobs))
+    # Apenas uma linha de status (NÃO imprime as vagas).
+    print(f"{len(jobs)} vagas salvas em {DATA_FILE}")
 
 
 if __name__ == "__main__":
