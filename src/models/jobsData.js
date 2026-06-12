@@ -1,17 +1,49 @@
-// MODEL (base de dados): lê as vagas que o bot salvou no arquivo JSON da pasta data/.
+// MODEL (base de dados): junta o que cada bot salvou e lê a base unificada.
 const fs = require("fs");
 const path = require("path");
 
-const DATA_FILE = path.join(__dirname, "..", "..", "data", "gupy.json");
+const bots = require("../bots");
 
-function readData() {
+const DATA_DIR = path.join(__dirname, "..", "..", "data");
+const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
+
+// Lê um data/<source>.json; se não existir ou estiver inválido, devolve null.
+function readBotFile(source) {
   try {
-    const content = fs.readFileSync(DATA_FILE, "utf-8");
+    const content = fs.readFileSync(path.join(DATA_DIR, `${source}.json`), "utf-8");
     return JSON.parse(content);
   } catch (error) {
-    // Arquivo não existe ou está inválido: tratamos como "sem dados".
     return null;
   }
 }
 
-module.exports = { readData };
+// Junta as vagas de TODOS os bots num único data/jobs.json e devolve o payload.
+function mergeBots(term) {
+  let jobs = [];
+  for (const source of bots) {
+    const data = readBotFile(source);
+    if (data && data.jobs) {
+      jobs = jobs.concat(data.jobs);
+    }
+  }
+
+  const payload = {
+    term,
+    fetchedAt: new Date().toISOString(),
+    jobs,
+  };
+  fs.writeFileSync(JOBS_FILE, JSON.stringify(payload, null, 2), "utf-8");
+  return payload;
+}
+
+// Lê a base unificada (ou null se ainda não existir).
+function readJobs() {
+  try {
+    const content = fs.readFileSync(JOBS_FILE, "utf-8");
+    return JSON.parse(content);
+  } catch (error) {
+    return null;
+  }
+}
+
+module.exports = { mergeBots, readJobs };
