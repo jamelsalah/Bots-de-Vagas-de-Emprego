@@ -39,7 +39,12 @@
       return new Date(isoDate).toLocaleDateString("pt-BR");
     }
 
-    // Monta o HTML de UM card a partir de UMA vaga
+    // Deixa o nome da fonte bonito para o selo: "gupy" -> "Gupy"
+    function sourceLabel(source) {
+      return source ? source[0].toUpperCase() + source.slice(1) : "";
+    }
+
+    // Monta o HTML de UM card a partir de UMA vaga (formato padrão)
     function createCard(job) {
       const mode = translateMode(job.workplaceType);
 
@@ -47,14 +52,18 @@
       card.className = "job-card " + mode.cssClass;
       card.innerHTML = `
         <div class="card-header">
-          <h2 class="job-title">${job.name}</h2>
+          <h2 class="job-title">${job.title}</h2>
           <span class="mode-badge">${mode.text}</span>
         </div>
-        <p class="company">${job.careerPageName}</p>
-        <p class="job-description">${job.description.slice(0, 180)}...</p>
+        <p class="company">
+          <span class="source-badge source-${job.source}">${sourceLabel(job.source)}</span>
+          ${job.company}
+        </p>
+        <p class="job-location">${job.location || ""}</p>
+        <p class="job-description">${job.description ? job.description.slice(0, 180) + "..." : ""}</p>
         <div class="card-footer">
-          <span class="date">Publicada em ${formatDate(job.publishedDate)}</span>
-          <a class="job-link" href="${job.jobUrl}" target="_blank">Ver vaga →</a>
+          <span class="date">${job.publishedDate ? "Publicada em " + formatDate(job.publishedDate) : ""}</span>
+          <a class="job-link" href="${job.url}" target="_blank">Ver vaga →</a>
         </div>
       `;
       return card;
