@@ -1,5 +1,8 @@
+import json
 import os
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -13,6 +16,9 @@ SEARCH_URL = "https://br.indeed.com/jobs?q={term}&start={start}"
 # Se você logou em outro perfil do Edge, troque "Default" por "Profile 1", etc.
 EDGE_USER_DATA = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Edge" / "User Data"
 EDGE_PROFILE = "Default"
+
+# Caminho da base de dados deste bot (sobe de bots/ até a raiz e entra em data/).
+DATA_FILE = Path(__file__).parent.parent / "data" / "indeed.json"
 
 # A 1ª página é pública; da 2ª em diante o Indeed exige login. ~15 vagas por página.
 MAX_PAGES = 5
@@ -117,6 +123,48 @@ def fetch_jobs(term, max_pages=MAX_PAGES):
         return todas, titulo
 
 
+def normalize(job):
+    # Traduz uma vaga crua do Indeed para o FORMATO PADRÃO (o mesmo "contrato"
+    # que o bot da Gupy usa). O snippet vem em HTML, então limpamos as tags.
+    snippet = job.get("snippet") or ""
+    descricao = re.sub(r"<[^>]+>", " ", snippet)         # remove as tags HTML
+    descricao = re.sub(r"\s+", " ", descricao).strip()    # colapsa espaços/quebras
+
+    jobkey = job.get("jobkey")
+
+    published = None
+    if job.get("pubDate"):
+        # pubDate vem em epoch (milissegundos); converte para ISO 8601.
+        published = datetime.fromtimestamp(
+            job["pubDate"] / 1000, tz=timezone.utc
+        ).isoformat()
+
+    return {
+        "source": "indeed",
+        "id": jobkey,
+        "title": job.get("title"),
+        "company": job.get("company"),
+        "description": descricao,
+        "location": job.get("formattedLocation") or "",
+        "workplaceType": "remote" if job.get("remoteLocation") else "other",
+        "publishedDate": published,
+        "url": f"https://br.indeed.com/viewjob?jk={jobkey}",
+    }
+
+
+def save_data(term, jobs):
+    # Mesmo molde do gupy.py: grava as vagas já normalizadas em data/indeed.json.
+    payload = {
+        "source": "indeed",
+        "term": term,
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "jobs": [normalize(job) for job in jobs],
+    }
+    DATA_FILE.parent.mkdir(exist_ok=True)
+    with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
+        json.dump(payload, arquivo, ensure_ascii=False, indent=2)
+
+
 def main():
     term = sys.argv[1] if len(sys.argv) > 1 else "python"
 
@@ -127,12 +175,8 @@ def main():
         print(f"    Titulo da pagina: {titulo!r}")
         sys.exit(1)
 
-    print(f"[ok] {len(jobs)} vagas encontradas para '{term}':\n")
-    for job in jobs[:10]:
-        title = job.get("title", "(sem título)")
-        company = job.get("company", "(sem empresa)")
-        location = job.get("formattedLocation", "")
-        print(f" - {title} | {company} | {location}")
+    save_data(term, jobs)
+    print(f"{len(jobs)} vagas salvas em {DATA_FILE}")
 
     if len(jobs) <= 15:
         print("\n(dica: se esperava mais vagas, confirme que voce esta LOGADO no")
