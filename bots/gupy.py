@@ -39,6 +39,8 @@ DATA_FILE = Path(__file__).parent.parent / "data" / "gupy.json"
 # workplaceType        | str   | modelo de trabalho: "remote" | "hybrid" | "on-site"
 # disabilities         | bool  | True se a vaga é também para pessoas com deficiência (PcD)
 # skills               | list  | lista de competências/habilidades (pode vir vazia [])
+
+
 def fetch_jobs(term):
     jobs = []
     offset = 0
@@ -61,13 +63,36 @@ def fetch_jobs(term):
     return jobs
 
 
+def normalize(job):
+    # Traduz uma vaga crua da Gupy para o FORMATO PADRÃO (o "contrato" que todo
+    # bot fala). Assim o Node e o front-end não precisam saber de onde a vaga veio.
+    if job.get("isRemoteWork"):
+        location = "Remoto"
+    else:
+        partes = [job.get("city"), job.get("state")]
+        location = ", ".join(p for p in partes if p)
+
+    return {
+        "source": "gupy",
+        "id": str(job.get("id")),
+        "title": job.get("name"),
+        "company": job.get("careerPageName"),
+        "description": job.get("description") or "",
+        "location": location,
+        "workplaceType": job.get("workplaceType"),
+        "publishedDate": job.get("publishedDate"),
+        "url": job.get("jobUrl"),
+    }
+
+
 def save_data(term, jobs):
     # Monta o registro e grava direto na base de dados (data/gupy.json).
     # Quem lê esse arquivo é o servidor Node — nada de vagas vai para o terminal.
     payload = {
+        "source": "gupy",
         "term": term,
         "fetchedAt": datetime.now(timezone.utc).isoformat(),
-        "jobs": jobs,
+        "jobs": [normalize(job) for job in jobs],
     }
     DATA_FILE.parent.mkdir(exist_ok=True)
     with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
