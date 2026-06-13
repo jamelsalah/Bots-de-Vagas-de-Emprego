@@ -23,7 +23,10 @@ function mergeBots(term) {
   for (const source of bots) {
     const data = readBotFile(source);
     if (data && data.jobs) {
-      jobs = jobs.concat(data.jobs);
+      // Enxuga o payload: na base unificada guardamos só um resumo da descrição.
+      for (const job of data.jobs) {
+        jobs.push({ ...job, description: (job.description || "").slice(0, 200) });
+      }
     }
   }
 
