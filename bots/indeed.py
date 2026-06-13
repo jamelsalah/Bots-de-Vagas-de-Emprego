@@ -17,11 +17,9 @@ SEARCH_URL = "https://br.indeed.com/jobs?q={term}&start={start}"
 EDGE_USER_DATA = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Edge" / "User Data"
 EDGE_PROFILE = "Default"
 
-# Caminho da base de dados deste bot (sobe de bots/ até a raiz e entra em data/).
-DATA_FILE = Path(__file__).parent.parent / "data" / "indeed.json"
+DATA_FILE = Path(__file__).parent.parent / "data" / "indeed.json"  # Caminho da base de dados
 
-# A 1ª página é pública; da 2ª em diante o Indeed exige login. ~15 vagas por página.
-MAX_PAGES = 5
+MAX_PAGES = 5  # A 1ª página é pública; da 2ª em diante o Indeed exige login. ~15 vagas por página.
 
 # As vagas ficam embutidas na página nesta variável JavaScript; pegamos a lista "results".
 JOBCARDS_JS = """
@@ -34,6 +32,132 @@ JOBCARDS_JS = """
   return (model && model.results) || null;
 }
 """
+
+
+
+def main():
+    term = sys.argv[1] if len(sys.argv) > 1 else "python"  # pega o termo na linha de comando
+    jobs = []
+
+    fetch_jobs(term, jobs)   # busca as vagas cruas (Playwright + Edge logado)
+    normalizeJobs(jobs)      # sanitiza as vagas cruas
+    save_data(term, jobs)    # salva as vagas limpas na base de dados
+
+    print(f"{len(jobs)} vagas salvas em {DATA_FILE}")  # Imprime status e quantidade de vagas buscadas.
+
+    if len(jobs) <= 15:
+        print("\n(dica: se esperava mais vagas, confirme que voce esta LOGADO no")
+        print(" Indeed nesse perfil do Edge e que o Edge estava fechado ao rodar.)")
+
+
+
+def fetch_jobs(term, jobs):
+    vistos = set()
+
+    # Stealth() disfarça as "pegadas" do Playwright; ajuda a não disparar o Cloudflare.
+    with Stealth().use_sync(sync_playwright()) as p:
+        try:
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=str(EDGE_USER_DATA),
+                channel="msedge",
+                headless=False,
+                locale="pt-BR",
+                timezone_id="America/Sao_Paulo",
+                no_viewport=True,
+                args=[
+                    f"--profile-directory={EDGE_PROFILE}",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
+        except Exception as erro:
+            print("[x] Nao consegui abrir o perfil do Edge.")
+            print("    Feche TODAS as janelas do Edge (e os processos em segundo plano)")
+            print("    e tente de novo.")
+            print(f"    Detalhe: {erro}")
+            sys.exit(1)
+
+        page = context.new_page()
+
+        for i in range(MAX_PAGES):
+            page.goto(SEARCH_URL.format(term=term, start=i * 10), timeout=60000)
+            try:
+                page.wait_for_function(JOBCARDS_JS, timeout=30000)
+                resultados = page.evaluate(JOBCARDS_JS)
+            except Exception:
+                resultados = None
+
+            if not resultados:
+                break
+
+            # Guarda só as vagas novas (o Indeed repete algumas entre páginas).
+            novos = 0
+            for job in resultados:
+                chave = job.get("jobkey")
+                if chave and chave not in vistos:
+                    vistos.add(chave)
+                    jobs.append(job)
+                    novos += 1
+
+            if novos == 0:
+                break
+
+        context.close()
+
+
+
+def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PADRÃO
+
+    jobs = []
+
+    for job in rawJobs:
+        snippet = job.get("snippet") or ""
+        descricao = re.sub(r"<[^>]+>", " ", snippet)          # remove as tags HTML
+        descricao = re.sub(r"\s+", " ", descricao).strip()     # colapsa espaços/quebras
+
+        jobkey = job.get("jobkey")
+
+        published = None
+        if job.get("pubDate"):
+            # pubDate vem em epoch (milissegundos); converte para ISO 8601.
+            published = datetime.fromtimestamp(
+                job["pubDate"] / 1000, tz=timezone.utc
+            ).isoformat()
+
+        jobs.append({
+            "source": "indeed",
+            "id": jobkey,
+            "title": job.get("title"),
+            "company": job.get("company"),
+            "description": descricao,
+            "location": job.get("formattedLocation") or "",
+            "workplaceType": "remote" if job.get("remoteLocation") else "other",
+            "publishedDate": published,
+            "url": f"https://br.indeed.com/viewjob?jk={jobkey}",
+        })
+
+    rawJobs.clear()
+    rawJobs[:] = jobs
+
+
+def save_data(term, jobs):  # Monta o registro e grava direto na base de dados (data/indeed.json).
+
+    payload = {
+        "source": "indeed",
+        "term": term,
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "jobs": [job for job in jobs],
+    }
+    DATA_FILE.parent.mkdir(exist_ok=True)
+    with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
+        json.dump(payload, arquivo, ensure_ascii=False, indent=2)
+
+
+
+
+if __name__ == "__main__":
+    main()
+
+
 
 # Campos úteis de cada vaga do Indeed (a vaga vem com ~110 campos no total):
 # Campo                | Tipo  | Significado
@@ -62,126 +186,3 @@ JOBCARDS_JS = """
 # viewJobLink          | str   | link relativo da vaga (/viewjob?jk=...)
 # O link absoluto para abrir a vaga monta-se com:
 #   https://br.indeed.com/viewjob?jk=<jobkey>
-
-
-def coletar_pagina(page, term, start):
-    page.goto(SEARCH_URL.format(term=term, start=start), timeout=60000)
-    try:
-        page.wait_for_function(JOBCARDS_JS, timeout=30000)
-        return page.evaluate(JOBCARDS_JS)
-    except Exception:
-        return None
-
-
-def fetch_jobs(term, max_pages=MAX_PAGES):
-    todas = []
-    vistos = set()
-
-    # Stealth() disfarça as "pegadas" do Playwright; ajuda a não disparar o Cloudflare.
-    with Stealth().use_sync(sync_playwright()) as p:
-        try:
-            context = p.chromium.launch_persistent_context(
-                user_data_dir=str(EDGE_USER_DATA),
-                channel="msedge",
-                headless=False,
-                locale="pt-BR",
-                timezone_id="America/Sao_Paulo",
-                no_viewport=True,
-                args=[
-                    f"--profile-directory={EDGE_PROFILE}",
-                    "--disable-blink-features=AutomationControlled",
-                ],
-            )
-        except Exception as erro:
-            print("[x] Nao consegui abrir o perfil do Edge.")
-            print("    Feche TODAS as janelas do Edge (e os processos em segundo plano)")
-            print("    e tente de novo.")
-            print(f"    Detalhe: {erro}")
-            sys.exit(1)
-
-        page = context.new_page()
-
-        for i in range(max_pages):
-            jobs = coletar_pagina(page, term, i * 10)
-            if not jobs:
-                break
-
-            # Guarda só as vagas novas (o Indeed repete algumas entre páginas).
-            novos = 0
-            for job in jobs:
-                chave = job.get("jobkey")
-                if chave and chave not in vistos:
-                    vistos.add(chave)
-                    todas.append(job)
-                    novos += 1
-
-            if novos == 0:
-                break
-
-        titulo = page.title()
-        context.close()
-        return todas, titulo
-
-
-def normalize(job):
-    # Traduz uma vaga crua do Indeed para o FORMATO PADRÃO (o mesmo "contrato"
-    # que o bot da Gupy usa). O snippet vem em HTML, então limpamos as tags.
-    snippet = job.get("snippet") or ""
-    descricao = re.sub(r"<[^>]+>", " ", snippet)         # remove as tags HTML
-    descricao = re.sub(r"\s+", " ", descricao).strip()    # colapsa espaços/quebras
-
-    jobkey = job.get("jobkey")
-
-    published = None
-    if job.get("pubDate"):
-        # pubDate vem em epoch (milissegundos); converte para ISO 8601.
-        published = datetime.fromtimestamp(
-            job["pubDate"] / 1000, tz=timezone.utc
-        ).isoformat()
-
-    return {
-        "source": "indeed",
-        "id": jobkey,
-        "title": job.get("title"),
-        "company": job.get("company"),
-        "description": descricao,
-        "location": job.get("formattedLocation") or "",
-        "workplaceType": "remote" if job.get("remoteLocation") else "other",
-        "publishedDate": published,
-        "url": f"https://br.indeed.com/viewjob?jk={jobkey}",
-    }
-
-
-def save_data(term, jobs):
-    # Mesmo molde do gupy.py: grava as vagas já normalizadas em data/indeed.json.
-    payload = {
-        "source": "indeed",
-        "term": term,
-        "fetchedAt": datetime.now(timezone.utc).isoformat(),
-        "jobs": [normalize(job) for job in jobs],
-    }
-    DATA_FILE.parent.mkdir(exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
-        json.dump(payload, arquivo, ensure_ascii=False, indent=2)
-
-
-def main():
-    term = sys.argv[1] if len(sys.argv) > 1 else "python"
-
-    jobs, titulo = fetch_jobs(term)
-
-    if not jobs:
-        print("[x] Nao consegui coletar as vagas.")
-        print(f"    Titulo da pagina: {titulo!r}")
-        sys.exit(1)
-
-    save_data(term, jobs)
-    print(f"{len(jobs)} vagas salvas em {DATA_FILE}")
-
-    if len(jobs) <= 15:
-        print("\n(dica: se esperava mais vagas, confirme que voce esta LOGADO no")
-        print(" Indeed nesse perfil do Edge e que o Edge estava fechado ao rodar.)")
-
-
-if __name__ == "__main__":
-    main()
