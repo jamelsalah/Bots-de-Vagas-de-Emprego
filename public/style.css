@@ -132,6 +132,35 @@ body {
   align-items: center;
   margin-top: 14px;
 }
+/* Barras de paginação (acima e abaixo da lista) */
+.pagination {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 auto;
+}
+.pagination:empty { margin: 0; }
+#pagination-top { margin-bottom: 28px; }
+#pagination { margin-top: 28px; }
+.page-btn {
+  min-width: 38px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-card);
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.page-btn.active {
+  color: #ffffff;
+  background: var(--color-remote);
+  border-color: var(--color-remote);
+  font-weight: bold;
+}
+.page-btn:disabled { color: var(--color-text-muted); background: var(--color-bg); cursor: default; }
+
 .date { font-size: 12px; color: var(--color-text-muted); }
 .job-link {
   font-size: 14px;

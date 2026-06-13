@@ -23,9 +23,16 @@
     <span class="legend-item"><span class="dot" style="background: var(--color-onsite)"></span> Presencial</span>
   </div>
 
+  <div id="pagination-top" class="pagination"></div>
   <div id="jobs-list"></div>
+  <div id="pagination" class="pagination"></div>
 
   <script>
+    // DADOS: estado da exibição (paginação)
+    const PAGE_SIZE = 50;   // cards por página
+    let viewJobs = [];      // base que será paginada (por ora = todas as vagas)
+    let currentPage = 1;    // página atual da exibição
+
     // Traduz o código do modelo de trabalho para texto e classe de cor
     function translateMode(type) {
       if (type === "remote")  return { text: "Remoto",     cssClass: "mode-remote" };
@@ -79,6 +86,53 @@
       });
     }
 
+    // Desenha a página atual: fatia viewJobs, renderiza os cards e a barra de páginas.
+    function renderPage() {
+      const totalPages = Math.max(1, Math.ceil(viewJobs.length / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const inicio = (currentPage - 1) * PAGE_SIZE;
+      renderJobs(viewJobs.slice(inicio, inicio + PAGE_SIZE));
+      renderPagination(totalPages);
+    }
+
+    // Desenha os botões de paginação nas duas barras (topo e rodapé).
+    function renderPagination(totalPages) {
+      fillPaginationBar(document.getElementById("pagination-top"), totalPages);
+      fillPaginationBar(document.getElementById("pagination"), totalPages);
+    }
+
+    // Preenche UMA barra de paginação (some quando há ≤ 1 página).
+    function fillPaginationBar(bar, totalPages) {
+      bar.innerHTML = "";
+      if (totalPages <= 1) return;
+
+      bar.appendChild(makePageButton("‹ Anterior", currentPage - 1, currentPage === 1));
+      for (let n = 1; n <= totalPages; n++) {
+        const btn = makePageButton(n, n, false);
+        if (n === currentPage) btn.classList.add("active");
+        bar.appendChild(btn);
+      }
+      bar.appendChild(makePageButton("Próxima ›", currentPage + 1, currentPage === totalPages));
+    }
+
+    // Cria um botão da barra de paginação que leva à página alvo.
+    function makePageButton(label, targetPage, disabled) {
+      const btn = document.createElement("button");
+      btn.className = "page-btn";
+      btn.textContent = label;
+      btn.disabled = disabled;
+      btn.onclick = () => goToPage(targetPage);
+      return btn;
+    }
+
+    // Vai para a página n, redesenha e rola ao topo da lista.
+    function goToPage(n) {
+      currentPage = n;
+      renderPage();
+      document.getElementById("jobs-list").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     // Mostra na tela um payload { term, fetchedAt, jobs } vindo do servidor.
     function showJobs(data) {
       const jobs = data.jobs || [];
@@ -93,6 +147,8 @@
       if (jobs.length === 0) {
         counter.textContent = "Nenhuma vaga salva ainda — clique em Buscar";
         document.getElementById("jobs-list").innerHTML = "";
+        document.getElementById("pagination-top").innerHTML = "";
+        document.getElementById("pagination").innerHTML = "";
         return;
       }
 
@@ -101,7 +157,10 @@
         texto += " · atualizado em " + new Date(data.fetchedAt).toLocaleString("pt-BR");
       }
       counter.textContent = texto;
-      renderJobs(jobs);
+
+      viewJobs = jobs;
+      currentPage = 1;
+      renderPage();
     }
 
     // Ao abrir a página: lê as vagas já salvas na base de dados (NÃO rebusca).
