@@ -86,6 +86,11 @@
       });
     }
 
+    // Comparador: mais recentes primeiro (publishedDate decrescente).
+    function byNewest(a, b) {
+      return new Date(b.publishedDate) - new Date(a.publishedDate);
+    }
+
     // Desenha a página atual: fatia viewJobs, renderiza os cards e a barra de páginas.
     function renderPage() {
       const totalPages = Math.max(1, Math.ceil(viewJobs.length / PAGE_SIZE));
@@ -147,7 +152,7 @@
       }
       counter.textContent = texto;
 
-      viewJobs = jobs;
+      viewJobs = jobs.sort(byNewest);
       currentPage = 1;
       renderPage();
     }
