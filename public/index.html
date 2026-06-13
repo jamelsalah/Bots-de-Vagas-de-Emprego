@@ -23,15 +23,32 @@
     <span class="legend-item"><span class="dot" style="background: var(--color-onsite)"></span> Presencial</span>
   </div>
 
+  <div id="filters">
+    <div class="filter-group">
+      <button class="filter-btn active" data-value="all"    onclick="setFilter('source','all',this)">Todas</button>
+      <button class="filter-btn"        data-value="gupy"   onclick="setFilter('source','gupy',this)">Gupy</button>
+      <button class="filter-btn"        data-value="indeed" onclick="setFilter('source','indeed',this)">Indeed</button>
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn active" data-value="all"     onclick="setFilter('mode','all',this)">Todos</button>
+      <button class="filter-btn"        data-value="remote"  onclick="setFilter('mode','remote',this)">Remoto</button>
+      <button class="filter-btn"        data-value="hybrid"  onclick="setFilter('mode','hybrid',this)">Híbrido</button>
+      <button class="filter-btn"        data-value="on-site" onclick="setFilter('mode','on-site',this)">Presencial</button>
+    </div>
+  </div>
+
   <div id="pagination-top" class="pagination"></div>
   <div id="jobs-list"></div>
   <div id="pagination" class="pagination"></div>
 
   <script>
-    // DADOS: estado da exibição (paginação)
-    const PAGE_SIZE = 50;   // cards por página
-    let viewJobs = [];      // base que será paginada (por ora = todas as vagas)
-    let currentPage = 1;    // página atual da exibição
+    // DADOS: estado da exibição (filtros + paginação)
+    const PAGE_SIZE = 50;      // cards por página
+    let allJobs = [];          // base completa vinda do servidor (nunca filtrada)
+    let viewJobs = [];         // base já filtrada/ordenada que será paginada
+    let currentPage = 1;       // página atual da exibição
+    let activeSource = "all";  // eixo Fonte ativo
+    let activeMode = "all";    // eixo Modelo ativo
 
     // Traduz o código do modelo de trabalho para texto e classe de cor
     function translateMode(type) {
@@ -89,6 +106,28 @@
     // Comparador: mais recentes primeiro (publishedDate decrescente).
     function byNewest(a, b) {
       return new Date(b.publishedDate) - new Date(a.publishedDate);
+    }
+
+    // Filtra a base pelos dois eixos (AND), ordena e manda paginar do início.
+    function applyView() {
+      viewJobs = allJobs.filter(job =>
+        (activeSource === "all" || job.source === activeSource) &&
+        (activeMode === "all" || job.workplaceType === activeMode)
+      ).sort(byNewest);
+
+      currentPage = 1;
+      renderPage();
+    }
+
+    // Clique num filtro: atualiza o eixo, move o destaque dentro do grupo e reaplica.
+    function setFilter(axis, value, button) {
+      if (axis === "source") activeSource = value;
+      if (axis === "mode") activeMode = value;
+
+      for (const btn of button.parentElement.children) btn.classList.remove("active");
+      button.classList.add("active");
+
+      applyView();
     }
 
     // Desenha a página atual: fatia viewJobs, renderiza os cards e a barra de páginas.
@@ -152,9 +191,11 @@
       }
       counter.textContent = texto;
 
-      viewJobs = jobs.sort(byNewest);
-      currentPage = 1;
-      renderPage();
+      allJobs = jobs;
+      activeSource = "all";
+      activeMode = "all";
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.value === "all"));
+      applyView();
     }
 
     // Ao abrir a página: lê as vagas já salvas na base de dados (NÃO rebusca).
