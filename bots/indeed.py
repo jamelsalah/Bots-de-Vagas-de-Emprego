@@ -116,6 +116,11 @@ def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PA
 
         jobkey = job.get("jobkey")
 
+        # Indeed raramente marca remoteLocation; também escreve "Remoto"/"home office"
+        # no texto da localização. Olhar o texto recupera as vagas remotas perdidas.
+        locais = ((job.get("formattedLocation") or "") + " " + (job.get("jobLocationCity") or "")).lower()
+        ehRemoto = bool(job.get("remoteLocation")) or "remoto" in locais or "home office" in locais
+
         published = None
         if job.get("pubDate"):
             # pubDate vem em epoch (milissegundos); converte para ISO 8601.
@@ -130,7 +135,7 @@ def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PA
             "company": job.get("company"),
             "description": descricao,
             "location": job.get("formattedLocation") or "",
-            "workplaceType": "remote" if job.get("remoteLocation") else "other",
+            "workplaceType": "remote" if ehRemoto else "other",
             "publishedDate": published,
             "url": f"https://br.indeed.com/viewjob?jk={jobkey}",
         })
