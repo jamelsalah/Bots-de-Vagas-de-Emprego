@@ -5,18 +5,97 @@ from pathlib import Path
 
 import requests
 
-API_URL = "https://employability-portal.gupy.io/api/v1/jobs"
+API_URL = "https://employability-portal.gupy.io/api/v1/jobs" # Url do gupy
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Origin": "https://portal.gupy.io",
     "Referer": "https://portal.gupy.io/",
 }
-
-# Caminho da base de dados (sobe de bots/ até a raiz e entra em data/).
-DATA_FILE = Path(__file__).parent.parent / "data" / "gupy.json"
+DATA_FILE = Path(__file__).parent.parent / "data" / "gupy.json" # Caminho da base de dados
 
 
-# Estrutura de cada vaga retornada pela API (dicionário Python).
+
+def main():
+    term = sys.argv[1] if len(sys.argv) > 1 else "python" #pega o termo na linha de comando
+    jobs = []
+
+    fetch_jobs(term, jobs)  #busca as vagas cruas
+    normalizeJobs(jobs) #sanitiza as vagas cruas
+    save_data(term, jobs) #salva as vagas limpas na base de dados
+
+    
+    print(f"{len(jobs)} vagas salvas em {DATA_FILE}")# Imprime status e quantidade de vagas buscadas.
+
+
+
+def fetch_jobs(term, jobs):
+    offset = 0
+    limit = 100
+
+    while True:
+        params = {"jobName": term, "limit": limit, "offset": offset}
+
+        response = requests.get(API_URL, params=params, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        jobs.extend(data["data"])
+
+        total = data["pagination"]["total"]
+        offset += limit
+        if offset >= total:
+            break
+
+
+
+def normalizeJobs(rawJobs):  # Traduz as vagas cruas da Gupy para o FORMATO PADRÃO
+   
+    jobs = []
+
+    for job in rawJobs:
+        if job.get("isRemoteWork"):
+            location = "Remoto"
+        else:
+            partes = [job.get("city"), job.get("state")]
+            location = ", ".join(p for p in partes if p)
+
+        jobs.append({
+            "source": "gupy",
+            "id": str(job.get("id")),
+            "title": job.get("name"),
+            "company": job.get("careerPageName"),
+            "description": job.get("description") or "",
+            "location": location,
+            "workplaceType": job.get("workplaceType"),
+            "publishedDate": job.get("publishedDate"),
+            "url": job.get("jobUrl"),
+        })
+    
+    rawJobs.clear()
+    rawJobs[:] = jobs
+
+
+def save_data(term, jobs):  # Monta o registro e grava direto na base de dados (data/gupy.json).
+   
+    payload = {
+        "source": "gupy",
+        "term": term,
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "jobs": [job for job in jobs],
+    }
+    DATA_FILE.parent.mkdir(exist_ok=True)
+    with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
+        json.dump(payload, arquivo, ensure_ascii=False, indent=2)
+
+
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+    # Estrutura de cada vaga retornada pela API (dicionário Python).
 # Campo                | Tipo  | Significado
 # ---------------------|-------|---------------------------------------------------
 # id                   | int   | identificador único da vaga
@@ -39,77 +118,3 @@ DATA_FILE = Path(__file__).parent.parent / "data" / "gupy.json"
 # workplaceType        | str   | modelo de trabalho: "remote" | "hybrid" | "on-site"
 # disabilities         | bool  | True se a vaga é também para pessoas com deficiência (PcD)
 # skills               | list  | lista de competências/habilidades (pode vir vazia [])
-
-
-def fetch_jobs(term):
-    jobs = []
-    offset = 0
-    limit = 100
-
-    while True:
-        params = {"jobName": term, "limit": limit, "offset": offset}
-
-        response = requests.get(API_URL, params=params, headers=HEADERS, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-
-        jobs.extend(data["data"])
-
-        total = data["pagination"]["total"]
-        offset += limit
-        if offset >= total:
-            break
-
-    return jobs
-
-
-def normalize(job):
-    # Traduz uma vaga crua da Gupy para o FORMATO PADRÃO (o "contrato" que todo
-    # bot fala). Assim o Node e o front-end não precisam saber de onde a vaga veio.
-    if job.get("isRemoteWork"):
-        location = "Remoto"
-    else:
-        partes = [job.get("city"), job.get("state")]
-        location = ", ".join(p for p in partes if p)
-
-    return {
-        "source": "gupy",
-        "id": str(job.get("id")),
-        "title": job.get("name"),
-        "company": job.get("careerPageName"),
-        "description": job.get("description") or "",
-        "location": location,
-        "workplaceType": job.get("workplaceType"),
-        "publishedDate": job.get("publishedDate"),
-        "url": job.get("jobUrl"),
-    }
-
-
-def save_data(term, jobs):
-    # Monta o registro e grava direto na base de dados (data/gupy.json).
-    # Quem lê esse arquivo é o servidor Node — nada de vagas vai para o terminal.
-    payload = {
-        "source": "gupy",
-        "term": term,
-        "fetchedAt": datetime.now(timezone.utc).isoformat(),
-        "jobs": [normalize(job) for job in jobs],
-    }
-    DATA_FILE.parent.mkdir(exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as arquivo:
-        json.dump(payload, arquivo, ensure_ascii=False, indent=2)
-
-
-def main():
-    # O termo de busca vem como argumento da linha de comando.
-    # Ex: python bots/gupy.py "java"   (sem argumento, usa "python")
-    term = sys.argv[1] if len(sys.argv) > 1 else "python"
-
-    jobs = fetch_jobs(term)
-    save_data(term, jobs)
-
-    # Apenas uma linha de status (NÃO imprime as vagas).
-    print(f"{len(jobs)} vagas salvas em {DATA_FILE}")
-
-
-if __name__ == "__main__":
-    main()
