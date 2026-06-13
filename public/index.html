@@ -93,40 +93,29 @@
 
       const inicio = (currentPage - 1) * PAGE_SIZE;
       renderJobs(viewJobs.slice(inicio, inicio + PAGE_SIZE));
-      renderPagination(totalPages);
+      renderPaginationButtons(totalPages);
     }
 
-    // Desenha os botões de paginação nas duas barras (topo e rodapé).
-    function renderPagination(totalPages) {
-      fillPaginationBar(document.getElementById("pagination-top"), totalPages);
-      fillPaginationBar(document.getElementById("pagination"), totalPages);
-    }
+    // Monta o HTML dos botões UMA vez e coloca nas duas barras (topo e rodapé).
+    function renderPaginationButtons(totalPages) {
+      let html = "";
+      if (totalPages > 1) {
+        const semVoltar = currentPage === 1 ? "disabled" : "";
+        const semAvancar = currentPage === totalPages ? "disabled" : "";
 
-    // Preenche UMA barra de paginação (some quando há ≤ 1 página).
-    function fillPaginationBar(bar, totalPages) {
-      bar.innerHTML = "";
-      if (totalPages <= 1) return;
-
-      bar.appendChild(makePageButton("‹ Anterior", currentPage - 1, currentPage === 1));
-      for (let n = 1; n <= totalPages; n++) {
-        const btn = makePageButton(n, n, false);
-        if (n === currentPage) btn.classList.add("active");
-        bar.appendChild(btn);
+        html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${semVoltar}>‹ Anterior</button>`;
+        for (let n = 1; n <= totalPages; n++) {
+          const ativa = n === currentPage ? "active" : "";
+          html += `<button class="page-btn ${ativa}" onclick="goToPage(${n})">${n}</button>`;
+        }
+        html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${semAvancar}>Próxima ›</button>`;
       }
-      bar.appendChild(makePageButton("Próxima ›", currentPage + 1, currentPage === totalPages));
+
+      document.getElementById("pagination-top").innerHTML = html;
+      document.getElementById("pagination").innerHTML = html;
     }
 
-    // Cria um botão da barra de paginação que leva à página alvo.
-    function makePageButton(label, targetPage, disabled) {
-      const btn = document.createElement("button");
-      btn.className = "page-btn";
-      btn.textContent = label;
-      btn.disabled = disabled;
-      btn.onclick = () => goToPage(targetPage);
-      return btn;
-    }
-
-    // Vai para a página n, redesenha e rola ao topo da lista.
+    // Vai para a página n (chamada pelos botões), redesenha e rola ao topo da lista.
     function goToPage(n) {
       currentPage = n;
       renderPage();
