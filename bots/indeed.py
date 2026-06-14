@@ -105,6 +105,35 @@ def fetch_jobs(term, jobs):
 
 
 
+def detectWorkplaceType(textos, remoteFlag):  # Decide o modelo de trabalho varrendo os rótulos
+    texto = " ".join(t for t in textos if t).lower()
+
+    termosRemoto = [
+        "remoto", "remote", "home office", "home-office", "trabalho remoto",
+        "work from home", "work from anywhere", "trabalhe de qualquer",
+        "qualquer lugar", "anywhere", "100% remoto", "totalmente remoto",
+    ]
+    termosHibrido = [
+        "híbrido", "hibrido", "hybrid", "semipresencial", "semi-presencial",
+    ]
+    termosPresencial = [
+        "presencial", "on-site", "on site", "onsite", "no escritório",
+        "in office", "in-office", "in person", "in-person",
+    ]
+
+    # "Home Office"/"Remoto" no rótulo é inequívoco e vence um eventual "híbrido" vindo de
+    # outro campo do mesmo card (era o caso dos Home Office que apareciam como híbrido).
+    if any(t in texto for t in termosRemoto):
+        return "remote"
+    if any(t in texto for t in termosHibrido):
+        return "hybrid"
+    if remoteFlag:
+        return "remote"
+    if any(t in texto for t in termosPresencial):
+        return "on-site"
+    return "other"
+
+
 def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PADRÃO
 
     jobs = []
@@ -116,10 +145,15 @@ def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PA
 
         jobkey = job.get("jobkey")
 
-        # Indeed raramente marca remoteLocation; também escreve "Remoto"/"home office"
-        # no texto da localização. Olhar o texto recupera as vagas remotas perdidas.
-        locais = ((job.get("formattedLocation") or "") + " " + (job.get("jobLocationCity") or "")).lower()
-        ehRemoto = bool(job.get("remoteLocation")) or "remoto" in locais or "home office" in locais
+        # O modelo de trabalho fica nos RÓTULOS do card (taxonomyAttributes[*].attributes[*].label):
+        # "Home Office", "Híbrido", "Presencial", "Trabalho remoto". O rótulo da CATEGORIA é sempre
+        # "remote" (nome fixo), então lemos só os valores internos + título e localização.
+        textos = [job.get("title"), job.get("displayTitle"),
+                  job.get("formattedLocation"), job.get("jobLocationCity")]
+        for taxonomia in (job.get("taxonomyAttributes") or []):
+            for attr in (taxonomia.get("attributes") or []):
+                textos.append(attr.get("label"))
+        modelo = detectWorkplaceType(textos, bool(job.get("remoteLocation")))
 
         published = None
         if job.get("pubDate"):
@@ -135,7 +169,7 @@ def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PA
             "company": job.get("company"),
             "description": descricao,
             "location": job.get("formattedLocation") or "",
-            "workplaceType": "remote" if ehRemoto else "other",
+            "workplaceType": modelo,
             "publishedDate": published,
             "url": f"https://br.indeed.com/viewjob?jk={jobkey}",
         })
