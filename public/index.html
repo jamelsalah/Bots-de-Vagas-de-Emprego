@@ -21,6 +21,7 @@
     <span class="legend-item"><span class="dot" style="background: var(--color-remote)"></span> Remoto</span>
     <span class="legend-item"><span class="dot" style="background: var(--color-hybrid)"></span> Híbrido</span>
     <span class="legend-item"><span class="dot" style="background: var(--color-onsite)"></span> Presencial</span>
+    <span class="legend-item"><span class="dot" style="background: var(--color-other)"></span> Outro</span>
   </div>
 
   <div id="filters">
@@ -34,6 +35,7 @@
       <button class="filter-btn"        data-value="remote"  onclick="setFilter('mode','remote',this)">Remoto</button>
       <button class="filter-btn"        data-value="hybrid"  onclick="setFilter('mode','hybrid',this)">Híbrido</button>
       <button class="filter-btn"        data-value="on-site" onclick="setFilter('mode','on-site',this)">Presencial</button>
+      <button class="filter-btn"        data-value="other"   onclick="setFilter('mode','other',this)">Outro</button>
     </div>
   </div>
 
@@ -47,8 +49,8 @@
     let allJobs = [];          // base completa vinda do servidor (nunca filtrada)
     let viewJobs = [];         // base já filtrada/ordenada que será paginada
     let currentPage = 1;       // página atual da exibição
-    let activeSource = "all";  // eixo Fonte ativo
-    let activeMode = "all";    // eixo Modelo ativo
+    let activeSources = new Set();  // fontes ligadas (vazio = todas)
+    let activeModes = new Set();    // modelos ligados (vazio = todos)
 
     // Traduz o código do modelo de trabalho para texto e classe de cor
     function translateMode(type) {
@@ -108,24 +110,35 @@
       return new Date(b.publishedDate) - new Date(a.publishedDate);
     }
 
-    // Filtra a base pelos dois eixos (AND), ordena e manda paginar do início.
+    // Filtra a base pelos dois eixos (AND). Dentro de um eixo, conjunto vazio = "todos";
+    // senão a vaga passa se o conjunto contém o seu valor (multisseleção: vários ligados).
     function applyView() {
       viewJobs = allJobs.filter(job =>
-        (activeSource === "all" || job.source === activeSource) &&
-        (activeMode === "all" || job.workplaceType === activeMode)
+        (activeSources.size === 0 || activeSources.has(job.source)) &&
+        (activeModes.size === 0 || activeModes.has(job.workplaceType))
       ).sort(byNewest);
 
       currentPage = 1;
       renderPage();
     }
 
-    // Clique num filtro: atualiza o eixo, move o destaque dentro do grupo e reaplica.
+    // Clique num filtro: liga/desliga o valor no eixo, ajusta os destaques e reaplica.
     function setFilter(axis, value, button) {
-      if (axis === "source") activeSource = value;
-      if (axis === "mode") activeMode = value;
+      const selecionados = axis === "source" ? activeSources : activeModes;
 
-      for (const btn of button.parentElement.children) btn.classList.remove("active");
-      button.classList.add("active");
+      if (value === "all") {
+        selecionados.clear();                // "Todas/Todos" limpa o eixo
+      } else if (selecionados.has(value)) {
+        selecionados.delete(value);          // já ligado -> desliga
+      } else {
+        selecionados.add(value);             // desligado -> liga
+      }
+
+      // Destaque: "Todas/Todos" aceso quando nada selecionado; senão, os escolhidos.
+      for (const btn of button.parentElement.children) {
+        const v = btn.dataset.value;
+        btn.classList.toggle("active", v === "all" ? selecionados.size === 0 : selecionados.has(v));
+      }
 
       applyView();
     }
@@ -192,8 +205,8 @@
       counter.textContent = texto;
 
       allJobs = jobs;
-      activeSource = "all";
-      activeMode = "all";
+      activeSources.clear();
+      activeModes.clear();
       document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.value === "all"));
       applyView();
     }
