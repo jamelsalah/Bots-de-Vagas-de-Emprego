@@ -11,10 +11,10 @@
   <h1 id="page-title">Vagas encontradas</h1>
   <p id="jobs-count">carregando...</p>
 
-  <!-- Caixa de busca: o botão chama a função searchJobs() -->
+  <!-- Caixa de busca: o comportamento dos botões fica em app.js -->
   <div id="search-bar">
     <input id="search-input" type="text" value="python" placeholder="Ex: python, java, dados...">
-    <button id="search-button" onclick="searchJobs()">Buscar vagas</button>
+    <button id="search-button">Buscar vagas</button>
   </div>
 
   <div id="legend">
@@ -26,16 +26,16 @@
 
   <div id="filters">
     <div class="filter-group">
-      <button class="filter-btn active" data-value="all"    onclick="setFilter('source','all',this)">Todas</button>
-      <button class="filter-btn"        data-value="gupy"   onclick="setFilter('source','gupy',this)">Gupy</button>
-      <button class="filter-btn"        data-value="indeed" onclick="setFilter('source','indeed',this)">Indeed</button>
+      <button class="filter-btn active" data-axis="source" data-value="all">Todas</button>
+      <button class="filter-btn"        data-axis="source" data-value="gupy">Gupy</button>
+      <button class="filter-btn"        data-axis="source" data-value="indeed">Indeed</button>
     </div>
     <div class="filter-group">
-      <button class="filter-btn active" data-value="all"     onclick="setFilter('mode','all',this)">Todos</button>
-      <button class="filter-btn"        data-value="remote"  onclick="setFilter('mode','remote',this)">Remoto</button>
-      <button class="filter-btn"        data-value="hybrid"  onclick="setFilter('mode','hybrid',this)">Híbrido</button>
-      <button class="filter-btn"        data-value="on-site" onclick="setFilter('mode','on-site',this)">Presencial</button>
-      <button class="filter-btn"        data-value="other"   onclick="setFilter('mode','other',this)">Outro</button>
+      <button class="filter-btn active" data-axis="mode" data-value="all">Todos</button>
+      <button class="filter-btn"        data-axis="mode" data-value="remote">Remoto</button>
+      <button class="filter-btn"        data-axis="mode" data-value="hybrid">Híbrido</button>
+      <button class="filter-btn"        data-axis="mode" data-value="on-site">Presencial</button>
+      <button class="filter-btn"        data-axis="mode" data-value="other">Outro</button>
     </div>
   </div>
 
@@ -43,204 +43,6 @@
   <div id="jobs-list"></div>
   <div id="pagination" class="pagination"></div>
 
-  <script>
-    // DADOS: estado da exibição (filtros + paginação)
-    const PAGE_SIZE = 50;      // cards por página
-    let allJobs = [];          // base completa vinda do servidor (nunca filtrada)
-    let viewJobs = [];         // base já filtrada/ordenada que será paginada
-    let currentPage = 1;       // página atual da exibição
-    let activeSources = new Set();  // fontes ligadas (vazio = todas)
-    let activeModes = new Set();    // modelos ligados (vazio = todos)
-
-    // Traduz o código do modelo de trabalho para texto e classe de cor
-    function translateMode(type) {
-      if (type === "remote")  return { text: "Remoto",     cssClass: "mode-remote" };
-      if (type === "hybrid")  return { text: "Híbrido",    cssClass: "mode-hybrid" };
-      if (type === "on-site") return { text: "Presencial", cssClass: "mode-onsite" };
-      return { text: "Outro", cssClass: "mode-other" };
-    }
-
-    // Transforma a data "2026-06-09T13:48:11Z" em "09/06/2026"
-    function formatDate(isoDate) {
-      return new Date(isoDate).toLocaleDateString("pt-BR");
-    }
-
-    // Deixa o nome da fonte bonito para o selo: "gupy" -> "Gupy"
-    function sourceLabel(source) {
-      return source ? source[0].toUpperCase() + source.slice(1) : "";
-    }
-
-    // Monta o HTML de UM card a partir de UMA vaga (formato padrão)
-    function createCard(job) {
-      const mode = translateMode(job.workplaceType);
-
-      const card = document.createElement("div");
-      card.className = "job-card " + mode.cssClass;
-      card.innerHTML = `
-        <div class="card-header">
-          <h2 class="job-title">${job.title}</h2>
-          <span class="mode-badge">${mode.text}</span>
-        </div>
-        <p class="company">
-          <span class="source-badge source-${job.source}">${sourceLabel(job.source)}</span>
-          ${job.company}
-        </p>
-        <p class="job-location">${job.location || ""}</p>
-        <p class="job-description">${job.description ? job.description.slice(0, 180) + "..." : ""}</p>
-        <div class="card-footer">
-          <span class="date">${job.publishedDate ? "Publicada em " + formatDate(job.publishedDate) : ""}</span>
-          <a class="job-link" href="${job.url}" target="_blank">Ver vaga →</a>
-        </div>
-      `;
-      return card;
-    }
-
-    // Desenha na tela a lista de vagas recebida (limpando o que havia antes).
-    function renderJobs(jobsList) {
-      const container = document.getElementById("jobs-list");
-      container.innerHTML = ""; // limpa os cards antigos
-
-      jobsList.map(job => {
-        container.appendChild(createCard(job));
-      });
-    }
-
-    // Comparador: mais recentes primeiro (publishedDate decrescente).
-    function byNewest(a, b) {
-      return new Date(b.publishedDate) - new Date(a.publishedDate);
-    }
-
-    // Filtra a base pelos dois eixos (AND). Dentro de um eixo, conjunto vazio = "todos";
-    // senão a vaga passa se o conjunto contém o seu valor (multisseleção: vários ligados).
-    function applyView() {
-      viewJobs = allJobs.filter(job =>
-        (activeSources.size === 0 || activeSources.has(job.source)) &&
-        (activeModes.size === 0 || activeModes.has(job.workplaceType))
-      ).sort(byNewest);
-
-      currentPage = 1;
-      renderPage();
-    }
-
-    // Clique num filtro: liga/desliga o valor no eixo, ajusta os destaques e reaplica.
-    function setFilter(axis, value, button) {
-      const selecionados = axis === "source" ? activeSources : activeModes;
-
-      if (value === "all") {
-        selecionados.clear();                // "Todas/Todos" limpa o eixo
-      } else if (selecionados.has(value)) {
-        selecionados.delete(value);          // já ligado -> desliga
-      } else {
-        selecionados.add(value);             // desligado -> liga
-      }
-
-      // Destaque: "Todas/Todos" aceso quando nada selecionado; senão, os escolhidos.
-      for (const btn of button.parentElement.children) {
-        const v = btn.dataset.value;
-        btn.classList.toggle("active", v === "all" ? selecionados.size === 0 : selecionados.has(v));
-      }
-
-      applyView();
-    }
-
-    // Desenha a página atual: fatia viewJobs, renderiza os cards e a barra de páginas.
-    function renderPage() {
-      const totalPages = Math.max(1, Math.ceil(viewJobs.length / PAGE_SIZE));
-      if (currentPage > totalPages) currentPage = totalPages;
-
-      const inicio = (currentPage - 1) * PAGE_SIZE;
-      renderJobs(viewJobs.slice(inicio, inicio + PAGE_SIZE));
-      renderPaginationButtons(totalPages);
-    }
-
-    // Monta o HTML dos botões UMA vez e coloca nas duas barras (topo e rodapé).
-    function renderPaginationButtons(totalPages) {
-      let html = "";
-      if (totalPages > 1) {
-        const semVoltar = currentPage === 1 ? "disabled" : "";
-        const semAvancar = currentPage === totalPages ? "disabled" : "";
-
-        html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${semVoltar}>‹ Anterior</button>`;
-        for (let n = 1; n <= totalPages; n++) {
-          const ativa = n === currentPage ? "active" : "";
-          html += `<button class="page-btn ${ativa}" onclick="goToPage(${n})">${n}</button>`;
-        }
-        html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${semAvancar}>Próxima ›</button>`;
-      }
-
-      document.getElementById("pagination-top").innerHTML = html;
-      document.getElementById("pagination").innerHTML = html;
-    }
-
-    // Vai para a página n (chamada pelos botões), redesenha e rola ao topo da lista.
-    function goToPage(n) {
-      currentPage = n;
-      renderPage();
-      document.getElementById("jobs-list").scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    // Mostra na tela um payload { term, fetchedAt, jobs } vindo do servidor.
-    function showJobs(data) {
-      const jobs = data.jobs || [];
-      const counter = document.getElementById("jobs-count");
-
-      // Se a base de dados guardou o termo, repõe na caixa de busca.
-      if (data.term) {
-        document.getElementById("search-input").value = data.term;
-      }
-
-      // Estado vazio: nenhuma vaga salva ainda.
-      if (jobs.length === 0) {
-        counter.textContent = "Nenhuma vaga salva ainda — clique em Buscar";
-        document.getElementById("jobs-list").innerHTML = "";
-        document.getElementById("pagination-top").innerHTML = "";
-        document.getElementById("pagination").innerHTML = "";
-        return;
-      }
-
-      let texto = jobs.length + " vagas";
-      if (data.fetchedAt) {
-        texto += " · atualizado em " + new Date(data.fetchedAt).toLocaleString("pt-BR");
-      }
-      counter.textContent = texto;
-
-      allJobs = jobs;
-      activeSources.clear();
-      activeModes.clear();
-      document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.value === "all"));
-      applyView();
-    }
-
-    // Ao abrir a página: lê as vagas já salvas na base de dados (NÃO rebusca).
-    async function loadData() {
-      const response = await fetch("/jobs");
-      const data = await response.json();
-      showJobs(data);
-    }
-
-    // Botão: rebusca na fonte com o termo digitado, salva na base de dados e mostra.
-    async function searchJobs() {
-      const term = document.getElementById("search-input").value || "python";
-      const button = document.getElementById("search-button");
-
-      button.disabled = true;
-      button.textContent = "Buscando...";
-      document.getElementById("jobs-count").textContent = "buscando...";
-
-      try {
-        const response = await fetch("/search?term=" + encodeURIComponent(term));
-        const data = await response.json();
-        showJobs(data);
-      } catch (error) {
-        document.getElementById("jobs-count").textContent = "Erro ao buscar. O servidor está rodando?";
-      }
-
-      button.disabled = false;
-      button.textContent = "Buscar vagas";
-    }
-
-    // Ao abrir a página, carrega a base de dados (sem rebuscar).
-    loadData();
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
