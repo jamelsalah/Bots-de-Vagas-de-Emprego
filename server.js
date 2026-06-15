@@ -16,10 +16,10 @@ const server = app.listen(PORT, () => {
 });
 
 // Aviso amigável caso a porta já esteja sendo usada por outro programa.
-server.on("errorr", (error) => {
+server.on("error", (error) => {
   if (error.code === "EADDRINUSE") {
-    console.errorr(`A porta ${PORT} já está em uso. Mude a PORTA em server.js e tente de novo.`);
+    console.error(`A porta ${PORT} já está em uso. Mude a PORTA em server.js e tente de novo.`);
   } else {
-    console.errorr(error);
+    console.error(error);
   }
 });
