@@ -4,40 +4,53 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vagas encontradas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <h1 id="page-title">Vagas encontradas</h1>
-  <p id="jobs-count">carregando...</p>
+  <div class="wrap">
+    <!-- Cabeçalho: título, contador, busca e filtros -->
+    <header class="page-head">
+      <h1 id="page-title">Vagas <em>encontradas</em></h1>
+      <p id="jobs-count">carregando...</p>
 
-  <!-- Caixa de busca: o comportamento dos botões fica em app.js -->
-  <div id="search-bar">
-    <input id="search-input" type="text" value="python" placeholder="Ex: python, java, dados...">
-    <button id="search-button">Buscar vagas</button>
+      <!-- Caixa de busca: o comportamento dos botões fica em app.js -->
+      <div id="search-bar">
+        <input id="search-input" type="text" value="python" placeholder="Ex: python, java, dados...">
+        <button id="search-button">Buscar vagas</button>
+      </div>
+
+      <!-- Filtros: um único container (#filters) para a delegação de clique do app.js -->
+      <div id="filters">
+        <!-- Linha 1: pílulas de fonte (preenchidas pelo JS) + legenda de cores -->
+        <div class="toolbar">
+          <div class="filter-group" id="source-filters"></div>
+          <div id="legend">
+            <span class="legend-item"><span class="dot" style="background: var(--color-remote)"></span> Remoto</span>
+            <span class="legend-item"><span class="dot" style="background: var(--color-hybrid)"></span> Híbrido</span>
+            <span class="legend-item"><span class="dot" style="background: var(--color-onsite)"></span> Presencial</span>
+            <span class="legend-item"><span class="dot" style="background: var(--color-other)"></span> Outro</span>
+          </div>
+        </div>
+
+        <!-- Linha 2: pílulas de modelo de trabalho -->
+        <div class="filter-group">
+          <button class="filter-btn active" data-axis="mode" data-value="all">Todos</button>
+          <button class="filter-btn"        data-axis="mode" data-value="remote">Remoto</button>
+          <button class="filter-btn"        data-axis="mode" data-value="hybrid">Híbrido</button>
+          <button class="filter-btn"        data-axis="mode" data-value="on-site">Presencial</button>
+          <button class="filter-btn"        data-axis="mode" data-value="other">Outro</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="pagination-top" class="pagination"></div>
+    <div id="jobs-list"></div>
+    <div id="pagination" class="pagination"></div>
   </div>
-
-  <div id="legend">
-    <span class="legend-item"><span class="dot" style="background: var(--color-remote)"></span> Remoto</span>
-    <span class="legend-item"><span class="dot" style="background: var(--color-hybrid)"></span> Híbrido</span>
-    <span class="legend-item"><span class="dot" style="background: var(--color-onsite)"></span> Presencial</span>
-    <span class="legend-item"><span class="dot" style="background: var(--color-other)"></span> Outro</span>
-  </div>
-
-  <div id="filters">
-    <div class="filter-group" id="source-filters"></div>
-    <div class="filter-group">
-      <button class="filter-btn active" data-axis="mode" data-value="all">Todos</button>
-      <button class="filter-btn"        data-axis="mode" data-value="remote">Remoto</button>
-      <button class="filter-btn"        data-axis="mode" data-value="hybrid">Híbrido</button>
-      <button class="filter-btn"        data-axis="mode" data-value="on-site">Presencial</button>
-      <button class="filter-btn"        data-axis="mode" data-value="other">Outro</button>
-    </div>
-  </div>
-
-  <div id="pagination-top" class="pagination"></div>
-  <div id="jobs-list"></div>
-  <div id="pagination" class="pagination"></div>
 
   <script src="app.js"></script>
 </body>

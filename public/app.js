@@ -14,10 +14,10 @@ let activeModes = new Set();      // modelos ligados (vazio = todos)
 
 // Traduz o código do modelo de trabalho para texto e classe de cor
 function translateMode(type) {
-  if (type === "remote")  return { text: "Remoto",     cssClass: "mode-remote" };
-  if (type === "hybrid")  return { text: "Híbrido",    cssClass: "mode-hybrid" };
-  if (type === "on-site") return { text: "Presencial", cssClass: "mode-onsite" };
-  return { text: "Outro", cssClass: "mode-other" };
+  if (type === "remote")  return { text: "Remoto",     cssClass: "remote" };
+  if (type === "hybrid")  return { text: "Híbrido",    cssClass: "hybrid" };
+  if (type === "on-site") return { text: "Presencial", cssClass: "onsite" };
+  return { text: "Outro", cssClass: "other" };
 }
 
 // Transforma a data "2026-06-09T13:48:11Z" em "09/06/2026"
@@ -70,16 +70,14 @@ function createCard(job) {
   card.className = "job-card " + mode.cssClass;
   card.innerHTML = `
     <div class="card-header">
-      <h2 class="job-title">${job.title}</h2>
-      <div class="header-actions">
+      <div class="card-tags">
+        <span class="source-badge" style="background: ${sourceColor(job.source)}">${sourceLabel(job.source)}</span>
         <span class="mode-badge">${mode.text}</span>
-        <button class="delete-btn" data-source="${job.source}" data-id="${job.id}" title="Excluir vaga">✕</button>
       </div>
+      <button class="delete-btn" data-source="${job.source}" data-id="${job.id}" title="Excluir vaga">✕</button>
     </div>
-    <p class="company">
-      <span class="source-badge" style="background: ${sourceColor(job.source)}">${sourceLabel(job.source)}</span>
-      ${job.company}
-    </p>
+    <h2 class="job-title">${job.title}</h2>
+    <p class="company">${job.company}</p>
     <p class="job-location">${job.location || ""}</p>
     <p class="job-description">${description}</p>
     <div class="card-footer">
