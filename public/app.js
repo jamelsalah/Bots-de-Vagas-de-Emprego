@@ -32,7 +32,7 @@ function sourceLabel(source) {
 }
 
 // Cores das fontes: marcas conhecidas + cor estável gerada do nome (novas fontes).
-const SOURCE_COLORS = { gupy: "#d6336c", indeed: "#2557a7" };
+const SOURCE_COLORS = { gupy: "#d6336c", indeed: "#2557a7", linkedin: "#0a66c2" };
 
 function sourceColor(source) {
   if (SOURCE_COLORS[source]) return SOURCE_COLORS[source];
