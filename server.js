@@ -6,6 +6,9 @@ const routes = require("./src/routes");
 const app = express();
 const PORT = 2424;
 
+// Lê o corpo JSON dos POST (ex.: /blacklist).
+app.use(express.json());
+
 // VIEW: serve os arquivos estáticos da pasta "public" (o index.html).
 app.use(express.static(path.join(__dirname, "public")));
 

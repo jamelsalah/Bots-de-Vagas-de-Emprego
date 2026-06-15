@@ -1,7 +1,8 @@
 // CONTROLLER: o "meio de campo".
 // Recebe o pedido do navegador, chama os models e devolve a resposta.
 const { runBot } = require("../models/botRunner");
-const { mergeBots, readJobs } = require("../models/jobsData");
+const { mergeBots, readJobs, pruneBase } = require("../models/jobsData");
+const { addToBlacklist } = require("../models/blacklist");
 const bots = require("../bots");
 
 const EMPTY = { term: null, fetchedAt: null, jobs: [] };
@@ -32,4 +33,17 @@ async function searchJobs(req, res) {
   res.json(data);
 }
 
-module.exports = { getJobsData, searchJobs };
+// POST /blacklist -> exclui uma vaga: guarda na blacklist e limpa a base unificada.
+function blacklistJob(req, res) {
+  const { source, id } = req.body;
+
+  if (!source || !id) {
+    return res.status(400).json({ error: "Faltou source ou id" });
+  }
+
+  addToBlacklist(source, id);
+  pruneBase();
+  res.json({ ok: true });
+}
+
+module.exports = { getJobsData, searchJobs, blacklistJob };

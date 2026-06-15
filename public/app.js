@@ -51,7 +51,10 @@ function createCard(job) {
   card.innerHTML = `
     <div class="card-header">
       <h2 class="job-title">${job.title}</h2>
-      <span class="mode-badge">${mode.text}</span>
+      <div class="header-actions">
+        <span class="mode-badge">${mode.text}</span>
+        <button class="delete-btn" data-source="${job.source}" data-id="${job.id}" title="Excluir vaga">🗑️</button>
+      </div>
     </div>
     <p class="company">
       <span class="source-badge source-${job.source}">${sourceLabel(job.source)}</span>
@@ -221,6 +224,20 @@ async function searchJobs() {
   button.textContent = "Buscar vagas";
 }
 
+// Exclui uma vaga: manda para a blacklist no servidor e some na hora da tela.
+async function excludeJob(source, id) {
+  await fetch("/blacklist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source, id }),
+  });
+
+  // Tira da base local e redesenha (filtros e paginação se reajustam sozinhos).
+  allJobs = allJobs.filter((job) => !(job.source === source && String(job.id) === String(id)));
+  applyFilter();
+  document.getElementById("jobs-count").textContent = allJobs.length + " vagas";
+}
+
 // ============================================================
 // INIT: liga os eventos (sem onclick no HTML) e carrega os dados
 // ============================================================
@@ -243,6 +260,13 @@ function init() {
       if (!button || button.disabled) return;
       goToPage(Number(button.dataset.page));
     });
+  });
+
+  // Lixeira: um listener delegado na lista cobre todos os cards (atuais e futuros).
+  document.getElementById("jobs-list").addEventListener("click", (event) => {
+    const button = event.target.closest(".delete-btn");
+    if (!button) return;
+    excludeJob(button.dataset.source, button.dataset.id);
   });
 
   // Por fim, carrega a base de dados já salva (sem rebuscar).

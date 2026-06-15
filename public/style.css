@@ -117,6 +117,26 @@ body {
 }
 .job-title { font-size: 17px; margin: 0; }
 
+/* Agrupa o selo de modelo e a lixeira no canto superior direito do card */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Botão de excluir vaga (lixeira) */
+.delete-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px;
+  opacity: 0.45;
+}
+.delete-btn:hover { opacity: 1; }
+
 /* O selo (pílula) no canto superior direito */
 .mode-badge {
   flex-shrink: 0;

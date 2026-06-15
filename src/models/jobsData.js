@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const bots = require("../bots");
+const { removeBlacklisted } = require("./blacklist");
 
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
 const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
@@ -30,6 +31,8 @@ function mergeBots(term) {
     }
   }
 
+  removeBlacklisted(jobs); // tira as vagas excluídas antes de salvar
+
   const payload = {
     term,
     fetchedAt: new Date().toISOString(),
@@ -49,4 +52,13 @@ function readJobs() {
   }
 }
 
-module.exports = { mergeBots, readJobs };
+// Reaplica a blacklist na base unificada já salva (limpa o jobs.json na hora).
+function pruneBase() {
+  const payload = readJobs();
+  if (!payload) return;
+
+  removeBlacklisted(payload.jobs);
+  fs.writeFileSync(JOBS_FILE, JSON.stringify(payload, null, 2), "utf-8");
+}
+
+module.exports = { mergeBots, readJobs, pruneBase };
