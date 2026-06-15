@@ -1,6 +1,6 @@
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -12,6 +12,7 @@ HEADERS = {
     "Referer": "https://portal.gupy.io/",
 }
 DATA_FILE = Path(__file__).parent.parent / "data" / "gupy.json" # Caminho da base de dados
+DIAS_LIMITE = 45  # só mantém vagas publicadas nos últimos 45 dias
 
 
 
@@ -21,6 +22,7 @@ def main():
 
     fetch_jobs(term, jobs)  #busca as vagas cruas
     normalizeJobs(jobs) #sanitiza as vagas cruas
+    filter_recent(jobs) #mantém só os últimos 45 dias
     save_data(term, jobs) #salva as vagas limpas na base de dados
 
     
@@ -73,6 +75,28 @@ def normalizeJobs(rawJobs):  # Traduz as vagas cruas da Gupy para o FORMATO PADR
     
     rawJobs.clear()
     rawJobs[:] = jobs
+
+
+def parse_date(value):  # ISO 8601 -> datetime com fuso (UTC); None se não der pra ler
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
+def filter_recent(jobs):  # Mantém só as vagas dos últimos DIAS_LIMITE dias (MUTA no lugar)
+    limite = datetime.now(timezone.utc) - timedelta(days=DIAS_LIMITE)
+
+    recentes = []
+    for job in jobs:
+        data = parse_date(job.get("publishedDate"))
+        if data is None or data >= limite:   # sem data legível -> mantém
+            recentes.append(job)
+
+    jobs.clear()
+    jobs[:] = recentes
 
 
 def save_data(term, jobs):  # Monta o registro e grava direto na base de dados (data/gupy.json).

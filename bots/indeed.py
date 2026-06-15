@@ -2,13 +2,13 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
-SEARCH_URL = "https://br.indeed.com/jobs?q={term}&start={start}"
+SEARCH_URL = "https://br.indeed.com/jobs?q={term}&start={start}&sort=date"
 
 # O login do Indeed usa reCAPTCHA (que não funciona em navegador automatizado), então em
 # vez de logar, o bot reaproveita o SEU Edge já logado: abre o mesmo perfil, com os cookies.
@@ -19,7 +19,7 @@ EDGE_PROFILE = "Default"
 
 DATA_FILE = Path(__file__).parent.parent / "data" / "indeed.json"  # Caminho da base de dados
 
-MAX_PAGES = 5  # A 1ª página é pública; da 2ª em diante o Indeed exige login. ~15 vagas por página.
+DIAS_LIMITE = 45  # para de paginar ao chegar em vagas com mais de 45 dias (ordenado por data)
 
 # As vagas ficam embutidas na página nesta variável JavaScript; pegamos a lista "results".
 JOBCARDS_JS = """
@@ -41,6 +41,7 @@ def main():
 
     fetch_jobs(term, jobs)   # busca as vagas cruas (Playwright + Edge logado)
     normalizeJobs(jobs)      # sanitiza as vagas cruas
+    filter_recent(jobs)      # mantém só os últimos 45 dias
     save_data(term, jobs)    # salva as vagas limpas na base de dados
 
     print(f"{len(jobs)} vagas salvas em {DATA_FILE}")  # Imprime status e quantidade de vagas buscadas.
@@ -53,6 +54,7 @@ def main():
 
 def fetch_jobs(term, jobs):
     vistos = set()
+    limite_ms = (datetime.now(timezone.utc) - timedelta(days=DIAS_LIMITE)).timestamp() * 1000
 
     # Stealth() disfarça as "pegadas" do Playwright; ajuda a não disparar o Cloudflare.
     with Stealth().use_sync(sync_playwright()) as p:
@@ -78,7 +80,8 @@ def fetch_jobs(term, jobs):
 
         page = context.new_page()
 
-        for i in range(MAX_PAGES):
+        i = 0
+        while True:
             page.goto(SEARCH_URL.format(term=term, start=i * 10), timeout=60000)
             try:
                 page.wait_for_function(JOBCARDS_JS, timeout=30000)
@@ -91,15 +94,25 @@ def fetch_jobs(term, jobs):
 
             # Guarda só as vagas novas (o Indeed repete algumas entre páginas).
             novos = 0
+            antiga = False
             for job in resultados:
+                # Ordenado por data (sort=date): ao bater numa vaga com mais de 45
+                # dias, o resto é ainda mais velho -> paramos por aqui.
+                pub = job.get("pubDate")
+                if pub and pub < limite_ms:
+                    antiga = True
+                    break
+
                 chave = job.get("jobkey")
                 if chave and chave not in vistos:
                     vistos.add(chave)
                     jobs.append(job)
                     novos += 1
 
-            if novos == 0:
+            if antiga or novos == 0:
                 break
+
+            i += 1
 
         context.close()
 
@@ -176,6 +189,28 @@ def normalizeJobs(rawJobs):  # Traduz as vagas cruas do Indeed para o FORMATO PA
 
     rawJobs.clear()
     rawJobs[:] = jobs
+
+
+def parse_date(value):  # ISO 8601 -> datetime com fuso (UTC); None se não der pra ler
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
+def filter_recent(jobs):  # Mantém só as vagas dos últimos DIAS_LIMITE dias (MUTA no lugar)
+    limite = datetime.now(timezone.utc) - timedelta(days=DIAS_LIMITE)
+
+    recentes = []
+    for job in jobs:
+        data = parse_date(job.get("publishedDate"))
+        if data is None or data >= limite:   # sem data legível -> mantém
+            recentes.append(job)
+
+    jobs.clear()
+    jobs[:] = recentes
 
 
 def save_data(term, jobs):  # Monta o registro e grava direto na base de dados (data/indeed.json).
