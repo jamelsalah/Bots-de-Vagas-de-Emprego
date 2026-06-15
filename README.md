@@ -1,14 +1,23 @@
 # Bots de Vagas de Emprego
 
 Bot que busca vagas de emprego automaticamente e as exibe numa página web, com
-caixa de busca por termo. Hoje coleta de **duas fontes**: **Gupy** e **Indeed**.
+caixa de busca por termo. Hoje coleta de **três fontes**: **Gupy**, **Indeed** e **LinkedIn**.
 
 > 🚧 **Status:** em desenvolvimento.
+
+Na página dá para **filtrar por fonte e por modelo de trabalho** (remoto/híbrido/presencial/outro),
+**paginar** os resultados e **excluir** uma vaga pelo ✕ do card (ela vai para uma _blacklist_ e
+não volta a aparecer). Os filtros de fonte são montados dinamicamente a partir do back-end, então
+adicionar um bot novo já faz o selo e o filtro aparecerem sozinhos. Só são mantidas as vagas
+publicadas nos **últimos 45 dias**.
 
 ## Tecnologias
 
 - **Back-end:** Node.js + Express (organizado em MVC)
-- **Coletores (scrapers):** Python — `bots/gupy.py` (API da Gupy) e `bots/indeed.py` (Playwright + Edge)
+- **Coletores (scrapers):** Python
+  - `bots/gupy.py` — API da Gupy (`requests`)
+  - `bots/indeed.py` — Indeed via Playwright + Edge logado
+  - `bots/linkedin.py` — API _guest_ do LinkedIn (`requests` + BeautifulSoup, sem login)
 - **Front-end:** HTML, CSS e JavaScript (sem framework)
 
 ## Como funciona
@@ -31,7 +40,7 @@ Todo bot grava cada vaga com os mesmos campos, não importa a fonte:
 
 ```json
 {
-  "source": "gupy",                 // ou "indeed" — vira o selo no card
+  "source": "gupy",                 // ou "indeed", "linkedin" — vira o selo no card
   "id": "11473261",
   "title": "Analista de Compras Júnior",
   "company": "Teclean",
@@ -49,22 +58,27 @@ Todo bot grava cada vaga com os mesmos campos, não importa a fonte:
 botVagas/
 ├── bots/
 │   ├── gupy.py                 # coletor (motor): API da Gupy -> data/gupy.json
-│   └── indeed.py               # coletor do Indeed (Playwright + Edge) -> data/indeed.json
+│   ├── indeed.py               # coletor do Indeed (Playwright + Edge) -> data/indeed.json
+│   └── linkedin.py             # coletor do LinkedIn (API guest) -> data/linkedin.json
 ├── src/
-│   ├── bots.js                 # registro dos bots disponíveis: ["gupy", "indeed"]
+│   ├── bots.js                 # registro dos bots disponíveis: ["gupy", "indeed", "linkedin"]
 │   ├── models/
 │   │   ├── botRunner.js        # ponte: runBot(source, term) roda bots/<source>.py
-│   │   └── jobsData.js         # mergeBots() une os data/<source>.json; readJobs() lê a base
+│   │   ├── jobsData.js         # mergeBots() une os data/<source>.json; readJobs() lê a base
+│   │   └── blacklist.js        # vagas excluídas pelo usuário (não voltam a aparecer)
 │   ├── controllers/
 │   │   └── jobsController.js   # recebe o pedido e responde
-│   └── routes.js               # define as rotas /jobs e /search
+│   └── routes.js               # define as rotas /jobs, /search e /blacklist
 ├── public/
 │   ├── index.html              # página com os cards (selo da fonte) e a busca
+│   ├── app.js                  # filtros, paginação, exclusão de vaga e render dos cards
 │   └── style.css               # estilos
 ├── data/                       # saída dos bots e base unificada (gitignored)
 │   ├── gupy.json               # vagas da Gupy no formato padrão
 │   ├── indeed.json             # vagas do Indeed no formato padrão
-│   └── jobs.json               # base unificada da última busca (lida pela página)
+│   ├── linkedin.json           # vagas do LinkedIn no formato padrão
+│   ├── jobs.json               # base unificada da última busca (lida pela página)
+│   └── blacklist.json          # vagas excluídas pelo usuário
 ├── server.js                   # sobe o servidor (porta 2424)
 ├── package.json
 └── requirements.txt
@@ -124,12 +138,30 @@ Para rodar o coletor manualmente (usando o Python do ambiente virtual `.venv`):
 > Se vier só ~15 vagas, provavelmente a sessão não estava logada ou o Edge ainda estava aberto.
 > Se logou em outro perfil do Edge, ajuste `EDGE_PROFILE` no `bots/indeed.py` (ex.: `"Profile 1"`).
 
+## Bot do LinkedIn
+
+O `bots/linkedin.py` usa a **API _guest_** do LinkedIn (a mesma que a página pública de vagas usa
+quando você **não** está logado), então **não precisa de login**. Ela devolve os cards de vaga em
+HTML, que o bot lê com **BeautifulSoup** e converte para o formato padrão.
+
+```powershell
+.\.venv\Scripts\python.exe bots\linkedin.py "python"
+```
+
+> Sem login, o LinkedIn tem um teto de requisições: se vier pouca vaga ou um erro **HTTP 429**,
+> é só esperar um pouco ou aumentar o intervalo entre páginas (`time.sleep`) no `bots/linkedin.py`.
+> O modelo de trabalho costuma ficar como **"Outro"**, pois o card _guest_ não informa
+> remoto/híbrido/presencial de forma explícita.
+
 ## Roadmap
 
-- [ ] Filtros na página (por modelo de trabalho, por palavra)
-- [ ] Cálculo de compatibilidade das vagas
 - [x] Base de dados de resultados em `data/gupy.json`
 - [x] Bot do Indeed (Playwright + Edge logado)
 - [x] Formato padrão de vaga compartilhado entre os bots
 - [x] Base unificada (`data/jobs.json`) reunindo todas as fontes
+- [x] Filtros na página (por fonte e por modelo de trabalho) + paginação
+- [x] Excluir vaga pelo card (blacklist)
+- [x] Bot do LinkedIn (API guest)
+- [ ] Cálculo de compatibilidade das vagas
 - [ ] Novas fontes de vagas (ex: Coodesh, Remotar)
+- [ ] Detectar o modelo de trabalho das vagas do LinkedIn
