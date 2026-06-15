@@ -19,8 +19,11 @@ Thumbs.db
 # Dados gerados pelos bots (saída de runtime)
 data/*.json
 
+# Mockups de design (apenas para escolha local, não versionar)
+design-previews/
+
 # claude
 .claude/
 CLAUDE.md
 HANDOFF.md
-PLANO-FASE2.md
+PLANO.md
