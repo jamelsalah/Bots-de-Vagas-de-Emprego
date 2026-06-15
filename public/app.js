@@ -157,8 +157,18 @@ function goToPage(n) {
   document.getElementById("jobs-list").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Mostra na tela um payload { term, fetchedAt, jobs } vindo do servidor.
-function showJobs(data) {
+// Carrega as vagas na base e reinicia a visualização do zero:
+// guarda a base completa, zera os filtros e manda renderizar.
+function resetView(jobs) {
+  allJobs = jobs;
+  activeSources.clear();
+  activeModes.clear();
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.value === "all"));
+  applyFilter();
+}
+
+// Resumo da busca: repõe o termo na caixa e escreve a contagem no contador.
+function showSummary(data) {
   const jobs = data.jobs || [];
   const counter = document.getElementById("jobs-count");
 
@@ -167,12 +177,9 @@ function showJobs(data) {
     document.getElementById("search-input").value = data.term;
   }
 
-  // Estado vazio: nenhuma vaga salva ainda.
+  // Base vazia: avisa no contador (o resetView limpa lista e paginação).
   if (jobs.length === 0) {
     counter.textContent = "Nenhuma vaga salva ainda — clique em Buscar";
-    document.getElementById("jobs-list").innerHTML = "";
-    document.getElementById("pagination-top").innerHTML = "";
-    document.getElementById("pagination").innerHTML = "";
     return;
   }
 
@@ -181,19 +188,15 @@ function showJobs(data) {
     text += " · atualizado em " + new Date(data.fetchedAt).toLocaleString("pt-BR");
   }
   counter.textContent = text;
-
-  allJobs = jobs;
-  activeSources.clear();
-  activeModes.clear();
-  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.value === "all"));
-  applyFilter();
 }
 
 // Ao abrir a página: lê as vagas já salvas na base de dados (NÃO rebusca).
 async function loadData() {
   const response = await fetch("/jobs");
   const data = await response.json();
-  showJobs(data);
+
+  showSummary(data);              // resumo no contador (+ repõe o termo)
+  resetView(data.jobs || []);     // base + render (limpa sozinho quando vazio)
 }
 
 // Botão: rebusca na fonte com o termo digitado, salva na base de dados e mostra.
@@ -208,7 +211,8 @@ async function searchJobs() {
   try {
     const response = await fetch("/search?term=" + encodeURIComponent(term));
     const data = await response.json();
-    showJobs(data);
+    showSummary(data);              // resumo no contador (+ repõe o termo)
+    resetView(data.jobs || []);     // base + render
   } catch (error) {
     document.getElementById("jobs-count").textContent = "Erro ao buscar. O servidor está rodando?";
   }
