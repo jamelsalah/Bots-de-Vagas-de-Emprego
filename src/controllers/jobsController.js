@@ -9,7 +9,8 @@ const EMPTY = { term: null, fetchedAt: null, jobs: [] };
 
 // GET /jobs -> lê a base unificada já salva (NÃO roda os bots).
 function getJobsData(req, res) {
-  res.json(readJobs() || EMPTY);
+  const data = readJobs() || EMPTY;
+  res.json({ ...data, sources: bots });
 }
 
 // GET /search?term= -> roda TODOS os bots, junta tudo e devolve a base unificada.
@@ -30,7 +31,7 @@ async function searchJobs(req, res) {
   });
 
   const data = mergeBots(term);
-  res.json(data);
+  res.json({ ...data, sources: bots });
 }
 
 // POST /blacklist -> exclui uma vaga: guarda na blacklist e limpa a base unificada.

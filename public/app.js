@@ -31,6 +31,26 @@ function sourceLabel(source) {
   return source[0].toUpperCase() + source.slice(1);
 }
 
+// Cores das fontes: marcas conhecidas + cor estável gerada do nome (novas fontes).
+const SOURCE_COLORS = { gupy: "#d6336c", indeed: "#2557a7" };
+
+function sourceColor(source) {
+  if (SOURCE_COLORS[source]) return SOURCE_COLORS[source];
+  let soma = 0;
+  for (let i = 0; i < source.length; i++) soma += source.charCodeAt(i);
+  return `hsl(${soma % 360}, 55%, 45%)`; // matiz derivado do nome
+}
+
+// Monta os botões do filtro de fonte ("Todas" + uma por bot cadastrado no backend).
+function buildSourceFilters(sources) {
+  const group = document.getElementById("source-filters");
+  let html = '<button class="filter-btn active" data-axis="source" data-value="all">Todas</button>';
+  for (const source of (sources || [])) {
+    html += `<button class="filter-btn" data-axis="source" data-value="${source}">${sourceLabel(source)}</button>`;
+  }
+  group.innerHTML = html;
+}
+
 // Monta o HTML de UM card a partir de UMA vaga (formato padrão)
 function createCard(job) {
   const mode = translateMode(job.workplaceType);
@@ -53,11 +73,11 @@ function createCard(job) {
       <h2 class="job-title">${job.title}</h2>
       <div class="header-actions">
         <span class="mode-badge">${mode.text}</span>
-        <button class="delete-btn" data-source="${job.source}" data-id="${job.id}" title="Excluir vaga">🗑️</button>
+        <button class="delete-btn" data-source="${job.source}" data-id="${job.id}" title="Excluir vaga">✕</button>
       </div>
     </div>
     <p class="company">
-      <span class="source-badge source-${job.source}">${sourceLabel(job.source)}</span>
+      <span class="source-badge" style="background: ${sourceColor(job.source)}">${sourceLabel(job.source)}</span>
       ${job.company}
     </p>
     <p class="job-location">${job.location || ""}</p>
@@ -198,8 +218,9 @@ async function loadData() {
   const response = await fetch("/jobs");
   const data = await response.json();
 
-  showSummary(data);              // resumo no contador (+ repõe o termo)
-  resetView(data.jobs || []);     // base + render (limpa sozinho quando vazio)
+  buildSourceFilters(data.sources); // monta os botões de fonte a partir do backend
+  showSummary(data);                // resumo no contador (+ repõe o termo)
+  resetView(data.jobs || []);       // base + render (limpa sozinho quando vazio)
 }
 
 // Botão: rebusca na fonte com o termo digitado, salva na base de dados e mostra.
@@ -214,8 +235,9 @@ async function searchJobs() {
   try {
     const response = await fetch("/search?term=" + encodeURIComponent(term));
     const data = await response.json();
-    showSummary(data);              // resumo no contador (+ repõe o termo)
-    resetView(data.jobs || []);     // base + render
+    buildSourceFilters(data.sources); // monta os botões de fonte a partir do backend
+    showSummary(data);                // resumo no contador (+ repõe o termo)
+    resetView(data.jobs || []);       // base + render
   } catch (error) {
     document.getElementById("jobs-count").textContent = "Erro ao buscar. O servidor está rodando?";
   }

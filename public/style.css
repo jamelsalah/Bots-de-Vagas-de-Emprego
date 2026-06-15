@@ -8,8 +8,6 @@
   --color-hybrid:      #7c3aed;  /* roxo   */
   --color-onsite:      #ea580c;  /* laranja*/
   --color-other:       #6b7280;  /* cinza  */
-  --color-gupy:        #d6336c;  /* rosa/magenta (marca Gupy) */
-  --color-indeed:      #2557a7;  /* azul (marca Indeed)       */
 }
 
 body {
@@ -125,15 +123,17 @@ body {
   flex-shrink: 0;
 }
 
-/* Botão de excluir vaga (lixeira) */
+/* Botão de excluir vaga (X vermelho) */
 .delete-btn {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: bold;
   line-height: 1;
-  padding: 2px;
-  opacity: 0.45;
+  padding: 2px 4px;
+  color: #dc2626;     /* vermelho */
+  opacity: 0.6;
 }
 .delete-btn:hover { opacity: 1; }
 
@@ -162,10 +162,8 @@ body {
   padding: 2px 8px;
   border-radius: 999px;
   margin-right: 6px;
-  background: var(--color-other);
+  background: var(--color-other); /* cor de segurança; o JS define a cor da fonte inline */
 }
-.source-gupy   { background: var(--color-gupy); }
-.source-indeed { background: var(--color-indeed); }
 
 /* Linha de localização da vaga */
 .job-location { color: var(--color-text-muted); font-size: 13px; margin: 0 0 10px 0; }
