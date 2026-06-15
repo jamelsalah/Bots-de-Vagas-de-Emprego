@@ -225,6 +225,15 @@ body::before {
   transition: .15s;
 }
 .delete-btn:hover { color: #d33; background: #fbeaea; }
+/* Estado "armado": após o 1º clique, pede confirmação do 2º clique */
+.delete-btn.confirm {
+  color: #fff;
+  background: #d33;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
 
 .job-title {
   font-family: "Bricolage Grotesque", system-ui, sans-serif;

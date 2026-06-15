@@ -7,6 +7,7 @@ let viewJobs = [];                // base já filtrada/ordenada que será pagina
 let currentPage = 1;              // página atual da exibição
 let activeSources = new Set();    // fontes ligadas (vazio = todas)
 let activeModes = new Set();      // modelos ligados (vazio = todos)
+let armedDelete = null;           // botão de excluir "armado" (esperando o 2º clique)
 
 // ============================================================
 // FUNÇÕES: cada uma atua sobre os dados acima
@@ -244,6 +245,14 @@ async function searchJobs() {
   button.textContent = "Buscar vagas";
 }
 
+// Cancela a confirmação de exclusão pendente: volta o botão ao "✕".
+function disarmDelete() {
+  if (!armedDelete) return;
+  armedDelete.classList.remove("confirm");
+  armedDelete.textContent = "✕";
+  armedDelete = null;
+}
+
 // Exclui uma vaga: manda para a blacklist no servidor e some na hora da tela.
 async function excludeJob(source, id) {
   await fetch("/blacklist", {
@@ -282,11 +291,27 @@ function init() {
     });
   });
 
-  // Lixeira: um listener delegado na lista cobre todos os cards (atuais e futuros).
+  // Lixeira: precisa de 2 cliques. 1º clique "arma" o botão (vira "Confirmar?"),
+  // 2º clique no mesmo botão exclui. Listener delegado cobre os cards atuais e futuros.
   document.getElementById("jobs-list").addEventListener("click", (event) => {
     const button = event.target.closest(".delete-btn");
     if (!button) return;
-    excludeJob(button.dataset.source, button.dataset.id);
+
+    if (armedDelete !== button) {   // 1º clique: arma este botão
+      disarmDelete();               // desarma qualquer outro que estivesse armado
+      armedDelete = button;
+      button.classList.add("confirm");
+      button.textContent = "Confirmar?";
+      return;
+    }
+
+    excludeJob(button.dataset.source, button.dataset.id); // 2º clique: exclui
+    armedDelete = null;
+  });
+
+  // Clicar em qualquer outro lugar cancela a confirmação pendente.
+  document.addEventListener("click", (event) => {
+    if (armedDelete && !event.target.closest(".delete-btn")) disarmDelete();
   });
 
   // Por fim, carrega a base de dados já salva (sem rebuscar).
